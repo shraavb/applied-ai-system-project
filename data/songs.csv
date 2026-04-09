@@ -1,19 +1,19 @@
-id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness
-1,Sunrise City,Neon Echo,pop,happy,0.82,118,0.84,0.79,0.18
-2,Midnight Coding,LoRoom,lofi,chill,0.42,78,0.56,0.62,0.71
-3,Storm Runner,Voltline,rock,intense,0.91,152,0.48,0.66,0.10
-4,Library Rain,Paper Lanterns,lofi,chill,0.35,72,0.60,0.58,0.86
-5,Gym Hero,Max Pulse,pop,intense,0.93,132,0.77,0.88,0.05
-6,Spacewalk Thoughts,Orbit Bloom,ambient,chill,0.28,60,0.65,0.41,0.92
-7,Coffee Shop Stories,Slow Stereo,jazz,relaxed,0.37,90,0.71,0.54,0.89
-8,Night Drive Loop,Neon Echo,synthwave,moody,0.75,110,0.49,0.73,0.22
-9,Focus Flow,LoRoom,lofi,focused,0.40,80,0.59,0.60,0.78
-10,Rooftop Lights,Indigo Parade,indie pop,happy,0.76,124,0.81,0.82,0.35
-11,Crown City,DJ Monarch,hip-hop,confident,0.85,95,0.72,0.91,0.08
-12,Morning Sonata,Clara Voss,classical,peaceful,0.22,68,0.74,0.28,0.97
-13,Velvet Tonight,Sable Noir,r&b,romantic,0.61,88,0.78,0.76,0.44
-14,Highway Dust,The Pines,country,nostalgic,0.48,102,0.62,0.65,0.75
-15,Iron Veil,Greystone,metal,angry,0.97,168,0.22,0.55,0.04
-16,Sunshine Coast,Irie Waves,reggae,peaceful,0.54,76,0.83,0.80,0.58
-17,Pulse Grid,Synthara,edm,energetic,0.94,140,0.69,0.95,0.03
-18,River Road,June Hollow,folk,melancholic,0.30,84,0.38,0.45,0.88
+id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness,popularity,release_decade
+1,Sunrise City,Neon Echo,pop,happy,0.82,118,0.84,0.79,0.18,82,2020
+2,Midnight Coding,LoRoom,lofi,chill,0.42,78,0.56,0.62,0.71,61,2020
+3,Storm Runner,Voltline,rock,intense,0.91,152,0.48,0.66,0.10,73,2010
+4,Library Rain,Paper Lanterns,lofi,chill,0.35,72,0.60,0.58,0.86,45,2020
+5,Gym Hero,Max Pulse,pop,intense,0.93,132,0.77,0.88,0.05,88,2020
+6,Spacewalk Thoughts,Orbit Bloom,ambient,chill,0.28,60,0.65,0.41,0.92,38,2010
+7,Coffee Shop Stories,Slow Stereo,jazz,relaxed,0.37,90,0.71,0.54,0.89,55,2000
+8,Night Drive Loop,Neon Echo,synthwave,moody,0.75,110,0.49,0.73,0.22,70,2010
+9,Focus Flow,LoRoom,lofi,focused,0.40,80,0.59,0.60,0.78,52,2020
+10,Rooftop Lights,Indigo Parade,indie pop,happy,0.76,124,0.81,0.82,0.35,79,2020
+11,Crown City,DJ Monarch,hip-hop,confident,0.85,95,0.72,0.91,0.08,85,2020
+12,Morning Sonata,Clara Voss,classical,peaceful,0.22,68,0.74,0.28,0.97,48,2000
+13,Velvet Tonight,Sable Noir,r&b,romantic,0.61,88,0.78,0.76,0.44,67,2010
+14,Highway Dust,The Pines,country,nostalgic,0.48,102,0.62,0.65,0.75,63,2000
+15,Iron Veil,Greystone,metal,angry,0.97,168,0.22,0.55,0.04,72,2010
+16,Sunshine Coast,Irie Waves,reggae,peaceful,0.54,76,0.83,0.80,0.58,58,2000
+17,Pulse Grid,Synthara,edm,energetic,0.94,140,0.69,0.95,0.03,90,2020
+18,River Road,June Hollow,folk,melancholic,0.30,84,0.38,0.45,0.88,42,2010

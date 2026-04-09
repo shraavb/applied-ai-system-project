@@ -5,93 +5,95 @@ Run from the project root with:
     python -m src.main
 """
 
-from src.recommender import load_songs, recommend_songs, max_possible_score, DEFAULT_WEIGHTS
-
-
-# ---------------------------------------------------------------------------
-# User profiles to evaluate
-# ---------------------------------------------------------------------------
-
-PROFILES = [
-    # --- Standard profiles --------------------------------------------------
-    (
-        "High-Energy Pop",
-        {"genre": "pop", "mood": "happy", "energy": 0.85, "likes_acoustic": False},
-    ),
-    (
-        "Chill Lofi",
-        {"genre": "lofi", "mood": "chill", "energy": 0.38, "likes_acoustic": True},
-    ),
-    (
-        "Deep Intense Rock",
-        {"genre": "rock", "mood": "intense", "energy": 0.92, "likes_acoustic": False},
-    ),
-    # --- Adversarial / edge-case profiles -----------------------------------
-    (
-        "ADVERSARIAL — Conflicting prefs (metal genre + peaceful mood + acoustic + high energy)",
-        {"genre": "metal", "mood": "peaceful", "energy": 0.90, "likes_acoustic": True},
-    ),
-    (
-        "ADVERSARIAL — Genre missing from catalog (bluegrass + melancholic)",
-        {"genre": "bluegrass", "mood": "melancholic", "energy": 0.45, "likes_acoustic": True},
-    ),
-    (
-        "ADVERSARIAL — Extreme low energy + angry mood",
-        {"genre": "classical", "mood": "angry", "energy": 0.10, "likes_acoustic": True},
-    ),
-]
-
-# ---------------------------------------------------------------------------
-# Experiment: weight shift — double energy importance, halve genre importance
-# ---------------------------------------------------------------------------
-
-EXPERIMENT_WEIGHTS = {
-    "genre":             1.0,   # halved from 2.0
-    "mood":              1.5,   # unchanged
-    "energy":            3.0,   # doubled from 1.5
-    "acoustic_match":    1.0,   # unchanged
-    "acoustic_nonmatch": 0.5,   # unchanged
-}
-EXPERIMENT_PROFILE = (
-    "EXPERIMENT — High-Energy Pop (weight shift: genre ÷2, energy ×2)",
-    {"genre": "pop", "mood": "happy", "energy": 0.85, "likes_acoustic": False},
+from tabulate import tabulate
+from src.recommender import (
+    load_songs,
+    recommend_songs,
+    max_possible_score,
+    SCORING_MODES,
+    DEFAULT_MODE,
 )
 
 
 # ---------------------------------------------------------------------------
-# Display helpers
+# User profiles
 # ---------------------------------------------------------------------------
 
-def _bar(score: float, max_score: float, width: int = 20) -> str:
-    """ASCII progress bar proportional to score."""
+PROFILES = [
+    ("High-Energy Pop",    {"genre": "pop",      "mood": "happy",      "energy": 0.85, "likes_acoustic": False, "target_popularity": 85, "preferred_decade": 2020}),
+    ("Chill Lofi",         {"genre": "lofi",     "mood": "chill",      "energy": 0.38, "likes_acoustic": True,  "target_popularity": 50}),
+    ("Deep Intense Rock",  {"genre": "rock",     "mood": "intense",    "energy": 0.92, "likes_acoustic": False, "target_popularity": 70}),
+    # Adversarial
+    ("ADVERSARIAL — Conflicting (metal + peaceful + acoustic)",
+                           {"genre": "metal",    "mood": "peaceful",   "energy": 0.90, "likes_acoustic": True,  "target_popularity": 60}),
+    ("ADVERSARIAL — Genre not in catalog (bluegrass + melancholic)",
+                           {"genre": "bluegrass","mood": "melancholic", "energy": 0.45, "likes_acoustic": True,  "target_popularity": 40}),
+    ("ADVERSARIAL — Extreme low energy + angry mood",
+                           {"genre": "classical","mood": "angry",      "energy": 0.10, "likes_acoustic": True,  "target_popularity": 45}),
+]
+
+
+# ---------------------------------------------------------------------------
+# Challenge 4 — Tabulate display helpers
+# ---------------------------------------------------------------------------
+
+def _render_bar(score: float, max_score: float, width: int = 16) -> str:
+    """Short ASCII fill bar proportional to score / max_score."""
     filled = int(score / max_score * width)
-    return "#" * filled + "-" * (width - filled)
+    return "█" * filled + "░" * (width - filled)
 
 
-def _print_profile_results(
+def _print_recommendations(
     label: str,
     user_prefs: dict,
-    recommendations: list,
+    recs: list,
     max_score: float,
+    mode: str = DEFAULT_MODE,
 ) -> None:
-    """Print a formatted recommendation block for one user profile."""
+    """Print a formatted table of recommendations using tabulate (Challenge 4)."""
     print()
-    print("=" * 60)
-    print(f"  PROFILE: {label}")
-    print("=" * 60)
-    print(f"  genre={user_prefs.get('genre')}  mood={user_prefs.get('mood')}  "
-          f"energy={user_prefs.get('energy')}  "
-          f"likes_acoustic={user_prefs.get('likes_acoustic', False)}")
-    print()
+    print(f"{'─' * 68}")
+    print(f"  PROFILE : {label}")
+    print(f"  MODE    : {mode}")
+    pref_str = "  genre={genre}  mood={mood}  energy={energy}  acoustic={likes_acoustic}".format(
+        genre=user_prefs.get("genre", "—"),
+        mood=user_prefs.get("mood", "—"),
+        energy=user_prefs.get("energy", "—"),
+        likes_acoustic=user_prefs.get("likes_acoustic", False),
+    )
+    extras = []
+    if "target_popularity" in user_prefs:
+        extras.append(f"pop_target={user_prefs['target_popularity']}")
+    if "preferred_decade" in user_prefs:
+        extras.append(f"decade={user_prefs['preferred_decade']}s")
+    if extras:
+        pref_str += "  " + "  ".join(extras)
+    print(pref_str)
+    print(f"{'─' * 68}")
 
-    for rank, (song, score, reasons) in enumerate(recommendations, start=1):
-        print(f"  #{rank}  {song['title']}  —  {song['artist']}")
-        print(f"       {song['genre']} / {song['mood']}  |  energy {song['energy']:.2f}")
-        print(f"       Score: {score:.2f}/{max_score:.2f}  [{_bar(score, max_score)}]")
-        print("       Why:")
-        for reason in reasons:
-            print(f"         • {reason}")
-        print()
+    rows = []
+    for rank, (song, score, reasons) in enumerate(recs, start=1):
+        bar = _render_bar(score, max_score)
+        # Surface the two most informative reason lines
+        top_reasons = "; ".join(
+            r for r in reasons
+            if any(kw in r for kw in ("genre match", "mood match", "energy proximity", "decade match"))
+        ) or reasons[0]
+        rows.append([
+            f"#{rank}",
+            song["title"],
+            f"{song['genre']} / {song['mood']}",
+            f"{score:.2f}/{max_score:.1f}",
+            bar,
+            top_reasons[:52],
+        ])
+
+    print(tabulate(
+        rows,
+        headers=["#", "Title", "Genre / Mood", "Score", "Bar", "Key reasons"],
+        tablefmt="simple",
+        colalign=("right", "left", "left", "right", "left", "left"),
+    ))
 
 
 # ---------------------------------------------------------------------------
@@ -101,53 +103,75 @@ def _print_profile_results(
 def main() -> None:
     songs = load_songs("data/songs.csv")
     print(f"Loaded songs: {len(songs)}")
-
-    # -----------------------------------------------------------------------
-    # Part 1 — Standard + adversarial profiles
-    # -----------------------------------------------------------------------
-    print("\n\n*** PART 1: PROFILE STRESS TEST ***")
     ms = max_possible_score()
 
+    # -----------------------------------------------------------------------
+    # PART 1 — Standard + adversarial profiles (balanced mode, no diversity)
+    # -----------------------------------------------------------------------
+    print("\n\n══════════════════════════════════════════════════════════════════")
+    print("  PART 1 — PROFILE STRESS TEST  (mode: balanced, diversity: off)")
+    print("══════════════════════════════════════════════════════════════════")
+
     for label, user_prefs in PROFILES:
-        recs = recommend_songs(user_prefs, songs, k=5)
-        _print_profile_results(label, user_prefs, recs, max_score=ms)
+        recs = recommend_songs(user_prefs, songs, k=5, mode="balanced")
+        _print_recommendations(label, user_prefs, recs, max_score=ms, mode="balanced")
 
     # -----------------------------------------------------------------------
-    # Part 2 — Weight shift experiment
-    # Compare same profile under baseline vs experimental weights side-by-side
+    # PART 2 — Challenge 2: Scoring Modes side-by-side on one profile
     # -----------------------------------------------------------------------
-    print("\n\n*** PART 2: WEIGHT SHIFT EXPERIMENT ***")
-    print("  Baseline weights:    genre=2.0  mood=1.5  energy=1.5")
-    print("  Experiment weights:  genre=1.0  mood=1.5  energy=3.0")
-    print("  Question: does reducing genre dominance surface better energy matches?")
+    print("\n\n══════════════════════════════════════════════════════════════════")
+    print("  PART 2 — SCORING MODES COMPARISON  (profile: High-Energy Pop)")
+    print("══════════════════════════════════════════════════════════════════")
+    demo_prefs = PROFILES[0][1]  # High-Energy Pop
 
-    exp_label, exp_prefs = EXPERIMENT_PROFILE
-
-    recs_baseline = recommend_songs(exp_prefs, songs, k=5, weights=DEFAULT_WEIGHTS)
-    recs_experiment = recommend_songs(exp_prefs, songs, k=5, weights=EXPERIMENT_WEIGHTS)
-
-    ms_exp = max_possible_score(EXPERIMENT_WEIGHTS)
-
-    print()
-    print(f"  Profile: {exp_prefs}")
-
-    print()
-    print("  --- BASELINE (genre=2.0, energy=1.5) ---")
-    for rank, (song, score, reasons) in enumerate(recs_baseline, 1):
-        print(f"  #{rank}  {song['title']} ({song['genre']}/{song['mood']})  Score: {score:.2f}/{ms:.2f}")
+    for mode_name in SCORING_MODES:
+        recs = recommend_songs(demo_prefs, songs, k=5, mode=mode_name)
+        ms_mode = max_possible_score(SCORING_MODES[mode_name])
+        _print_recommendations(
+            f"High-Energy Pop — mode: {mode_name}",
+            demo_prefs, recs,
+            max_score=ms_mode,
+            mode=mode_name,
+        )
 
     print()
-    print("  --- EXPERIMENT (genre=1.0, energy=3.0) ---")
-    for rank, (song, score, reasons) in enumerate(recs_experiment, 1):
-        print(f"  #{rank}  {song['title']} ({song['genre']}/{song['mood']})  Score: {score:.2f}/{ms_exp:.2f}")
+    print("  Observation:")
+    print("  • genre_first    → genre dominates; only pop songs make the top 2")
+    print("  • mood_first     → happy songs from ANY genre can beat same-genre/wrong-mood")
+    print("  • energy_focused → exact energy match wins; genre almost irrelevant")
+    print("  • balanced       → the default; genre leads but mood and energy both matter")
 
-    baseline_top = recs_baseline[0][0]["title"]
-    exp_top = recs_experiment[0][0]["title"]
-    if baseline_top == exp_top:
-        print(f"\n  Observation: #1 unchanged ({baseline_top}) — genre and energy agree for this profile.")
+    # -----------------------------------------------------------------------
+    # PART 3 — Challenge 3: Diversity re-ranking
+    # -----------------------------------------------------------------------
+    print("\n\n══════════════════════════════════════════════════════════════════")
+    print("  PART 3 — DIVERSITY RE-RANKING  (profile: Chill Lofi)")
+    print("══════════════════════════════════════════════════════════════════")
+    chill_prefs = PROFILES[1][1]
+
+    recs_plain = recommend_songs(chill_prefs, songs, k=5, mode="balanced")
+    recs_diverse = recommend_songs(chill_prefs, songs, k=5, mode="balanced",
+                                   diversity=True, artist_penalty=1.5, genre_penalty=0.75)
+
+    print()
+    print("  Without diversity (may repeat artists / genres):")
+    _print_recommendations("Chill Lofi — no diversity", chill_prefs,
+                           recs_plain, max_score=ms, mode="balanced")
+
+    print()
+    print("  With diversity (artist_penalty=1.5, genre_penalty=0.75):")
+    _print_recommendations("Chill Lofi — diversity ON", chill_prefs,
+                           recs_diverse, max_score=ms, mode="balanced")
+
+    plain_genres  = [r[0]["genre"] for r in recs_plain]
+    diverse_genres = [r[0]["genre"] for r in recs_diverse]
+    plain_unique   = len(set(plain_genres))
+    diverse_unique = len(set(diverse_genres))
+    print(f"\n  Unique genres without diversity: {plain_unique}  →  with diversity: {diverse_unique}")
+    if diverse_unique > plain_unique:
+        print("  Diversity successfully broadened the genre spread.")
     else:
-        print(f"\n  Observation: #1 changed from '{baseline_top}' → '{exp_top}'")
-        print("  Energy weighting pushed a non-genre-match song to the top.")
+        print("  Top-5 already diverse on this profile; penalty had no effect.")
 
     print()
 
