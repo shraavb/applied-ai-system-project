@@ -34,14 +34,14 @@ class UserProfile:
 
 
 # ---------------------------------------------------------------------------
-# Challenge 2 — Scoring Modes (Strategy pattern via weight presets)
+# Challenge 2: Scoring Modes (Strategy pattern via weight presets)
 #
 # Each mode is a named weight dict. Pass the name to recommend_songs(mode=...)
 # and it selects the corresponding preset. "balanced" is the default.
 # ---------------------------------------------------------------------------
 
 SCORING_MODES: Dict[str, Dict[str, float]] = {
-    # Default — genre is the strongest signal, mood and energy close behind
+    # Default: genre is the strongest signal, mood and energy close behind
     "balanced": {
         "genre":             2.0,
         "mood":              1.5,
@@ -51,7 +51,7 @@ SCORING_MODES: Dict[str, Dict[str, float]] = {
         "popularity":        0.5,   # mild bonus for popular songs
         "decade":            1.0,   # bonus for matching preferred decade
     },
-    # Genre-First — genre dominates; good for users who never leave their lane
+    # Genre-First: genre dominates; good for users who never leave their lane
     "genre_first": {
         "genre":             4.0,
         "mood":              1.0,
@@ -61,7 +61,7 @@ SCORING_MODES: Dict[str, Dict[str, float]] = {
         "popularity":        0.25,
         "decade":            0.5,
     },
-    # Mood-First — emotional match matters most; good for playlist-by-feeling users
+    # Mood-First: emotional match matters most; good for playlist-by-feeling users
     "mood_first": {
         "genre":             1.0,
         "mood":              4.0,
@@ -71,7 +71,7 @@ SCORING_MODES: Dict[str, Dict[str, float]] = {
         "popularity":        0.25,
         "decade":            0.5,
     },
-    # Energy-Focused — vibe intensity is king; good for activity-based listening
+    # Energy-Focused: vibe intensity is king; good for activity-based listening
     "energy_focused": {
         "genre":             0.5,
         "mood":              1.0,
@@ -135,12 +135,12 @@ def score_song(
     """Score a single song against user preferences; return (total_score, reasons).
 
     Default algorithm recipe:
-      +2.0  genre match        — wrong genre is a dealbreaker
-      +1.5  mood match         — direct emotional intent signal
-      ×1.5  energy proximity   — 1 - |target - actual|, rewards closeness
-      ×1.0  acousticness fit   — organic vs electronic texture preference
-      ×0.5  popularity bonus   — mild reward for popular/charting songs (Challenge 1)
-      +1.0  decade match       — bonus if song era matches user preference (Challenge 1)
+      +2.0  genre match        - wrong genre is a dealbreaker
+      +1.5  mood match         - direct emotional intent signal
+      x1.5  energy proximity   - 1 - |target - actual|, rewards closeness
+      x1.0  acousticness fit   - organic vs electronic texture preference
+      x0.5  popularity bonus   - mild reward for popular/charting songs (Challenge 1)
+      +1.0  decade match       - bonus if song era matches user preference (Challenge 1)
 
     Pass a custom `weights` dict or use a named mode via recommend_songs(mode=...).
     """
@@ -222,7 +222,7 @@ def recommend_songs(
         songs:          Full catalog loaded from CSV.
         k:              Number of recommendations to return.
         weights:        Custom weight dict (overrides `mode` if provided).
-        mode:           Named scoring mode — one of SCORING_MODES keys.
+        mode:           Named scoring mode, one of SCORING_MODES keys.
                         Challenge 2: "balanced" | "genre_first" | "mood_first" | "energy_focused"
         diversity:      If True, apply greedy diversity re-ranking (Challenge 3).
         artist_penalty: Score deduction per repeated artist in top-k (Challenge 3).
@@ -237,11 +237,11 @@ def recommend_songs(
     # Score every song
     scored = [(song, *score_song(user_prefs, song, weights=w)) for song in songs]
 
-    # Sort descending by score — produce a new list, keep `songs` intact
+    # Sort descending by score; produce a new list, keep `songs` intact
     ranked = sorted(scored, key=lambda t: t[1], reverse=True)
 
     if diversity:
-        # Challenge 3 — Greedy diversity re-ranking
+        # Challenge 3: Greedy diversity re-ranking
         return _diversity_rerank(ranked, k=k,
                                  artist_penalty=artist_penalty,
                                  genre_penalty=genre_penalty)
@@ -249,7 +249,7 @@ def recommend_songs(
 
 
 # ---------------------------------------------------------------------------
-# Challenge 3 — Diversity re-ranking
+# Challenge 3: Diversity re-ranking
 # ---------------------------------------------------------------------------
 
 def _diversity_rerank(
@@ -354,4 +354,4 @@ class Recommender:
         """Return a plain-language explanation of why this song was recommended."""
         score, reasons = _score_song_oop(user, song)
         ms = max_possible_score()
-        return f"Score {score:.2f}/{ms:.2f} — " + "; ".join(reasons)
+        return f"Score {score:.2f}/{ms:.2f}: " + "; ".join(reasons)

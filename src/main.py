@@ -24,17 +24,17 @@ PROFILES = [
     ("Chill Lofi",         {"genre": "lofi",     "mood": "chill",      "energy": 0.38, "likes_acoustic": True,  "target_popularity": 50}),
     ("Deep Intense Rock",  {"genre": "rock",     "mood": "intense",    "energy": 0.92, "likes_acoustic": False, "target_popularity": 70}),
     # Adversarial
-    ("ADVERSARIAL — Conflicting (metal + peaceful + acoustic)",
+    ("ADVERSARIAL: Conflicting (metal + peaceful + acoustic)",
                            {"genre": "metal",    "mood": "peaceful",   "energy": 0.90, "likes_acoustic": True,  "target_popularity": 60}),
-    ("ADVERSARIAL — Genre not in catalog (bluegrass + melancholic)",
+    ("ADVERSARIAL: Genre not in catalog (bluegrass + melancholic)",
                            {"genre": "bluegrass","mood": "melancholic", "energy": 0.45, "likes_acoustic": True,  "target_popularity": 40}),
-    ("ADVERSARIAL — Extreme low energy + angry mood",
+    ("ADVERSARIAL: Extreme low energy + angry mood",
                            {"genre": "classical","mood": "angry",      "energy": 0.10, "likes_acoustic": True,  "target_popularity": 45}),
 ]
 
 
 # ---------------------------------------------------------------------------
-# Challenge 4 — Tabulate display helpers
+# Challenge 4: Tabulate display helpers
 # ---------------------------------------------------------------------------
 
 def _render_bar(score: float, max_score: float, width: int = 16) -> str:
@@ -56,9 +56,9 @@ def _print_recommendations(
     print(f"  PROFILE : {label}")
     print(f"  MODE    : {mode}")
     pref_str = "  genre={genre}  mood={mood}  energy={energy}  acoustic={likes_acoustic}".format(
-        genre=user_prefs.get("genre", "—"),
-        mood=user_prefs.get("mood", "—"),
-        energy=user_prefs.get("energy", "—"),
+        genre=user_prefs.get("genre", "-"),
+        mood=user_prefs.get("mood", "-"),
+        energy=user_prefs.get("energy", "-"),
         likes_acoustic=user_prefs.get("likes_acoustic", False),
     )
     extras = []
@@ -106,10 +106,10 @@ def main() -> None:
     ms = max_possible_score()
 
     # -----------------------------------------------------------------------
-    # PART 1 — Standard + adversarial profiles (balanced mode, no diversity)
+    # PART 1: Standard + adversarial profiles (balanced mode, no diversity)
     # -----------------------------------------------------------------------
     print("\n\n══════════════════════════════════════════════════════════════════")
-    print("  PART 1 — PROFILE STRESS TEST  (mode: balanced, diversity: off)")
+    print("  PART 1: PROFILE STRESS TEST  (mode: balanced, diversity: off)")
     print("══════════════════════════════════════════════════════════════════")
 
     for label, user_prefs in PROFILES:
@@ -117,10 +117,10 @@ def main() -> None:
         _print_recommendations(label, user_prefs, recs, max_score=ms, mode="balanced")
 
     # -----------------------------------------------------------------------
-    # PART 2 — Challenge 2: Scoring Modes side-by-side on one profile
+    # PART 2: Challenge 2: Scoring Modes side-by-side on one profile
     # -----------------------------------------------------------------------
     print("\n\n══════════════════════════════════════════════════════════════════")
-    print("  PART 2 — SCORING MODES COMPARISON  (profile: High-Energy Pop)")
+    print("  PART 2: SCORING MODES COMPARISON  (profile: High-Energy Pop)")
     print("══════════════════════════════════════════════════════════════════")
     demo_prefs = PROFILES[0][1]  # High-Energy Pop
 
@@ -128,7 +128,7 @@ def main() -> None:
         recs = recommend_songs(demo_prefs, songs, k=5, mode=mode_name)
         ms_mode = max_possible_score(SCORING_MODES[mode_name])
         _print_recommendations(
-            f"High-Energy Pop — mode: {mode_name}",
+            f"High-Energy Pop, mode: {mode_name}",
             demo_prefs, recs,
             max_score=ms_mode,
             mode=mode_name,
@@ -142,10 +142,10 @@ def main() -> None:
     print("  • balanced       → the default; genre leads but mood and energy both matter")
 
     # -----------------------------------------------------------------------
-    # PART 3 — Challenge 3: Diversity re-ranking
+    # PART 3: Challenge 3: Diversity re-ranking
     # -----------------------------------------------------------------------
     print("\n\n══════════════════════════════════════════════════════════════════")
-    print("  PART 3 — DIVERSITY RE-RANKING  (profile: Chill Lofi)")
+    print("  PART 3: DIVERSITY RE-RANKING  (profile: Chill Lofi)")
     print("══════════════════════════════════════════════════════════════════")
     chill_prefs = PROFILES[1][1]
 
@@ -155,12 +155,12 @@ def main() -> None:
 
     print()
     print("  Without diversity (may repeat artists / genres):")
-    _print_recommendations("Chill Lofi — no diversity", chill_prefs,
+    _print_recommendations("Chill Lofi (no diversity)", chill_prefs,
                            recs_plain, max_score=ms, mode="balanced")
 
     print()
     print("  With diversity (artist_penalty=1.5, genre_penalty=0.75):")
-    _print_recommendations("Chill Lofi — diversity ON", chill_prefs,
+    _print_recommendations("Chill Lofi (diversity ON)", chill_prefs,
                            recs_diverse, max_score=ms, mode="balanced")
 
     plain_genres  = [r[0]["genre"] for r in recs_plain]
