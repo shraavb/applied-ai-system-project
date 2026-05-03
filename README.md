@@ -14,16 +14,19 @@ The base project was the **Music Recommender** from Module 3 of Foundations of A
 
 ## What's New in Version 2.0
 
-VibeFinder 2.0 extends the Module 3 recommender with a full AI integration layer:
+VibeFinder 2.0 extends the Module 3 recommender with four AI integration layers:
 
-| New Feature | What It Does |
-|-------------|-------------|
-| **Natural Language Interface** | Users describe music in plain English. Claude (Haiku) parses the request into a structured user profile. |
-| **Input Safety Guardrail** | Rejects off-topic, too-short, or potentially harmful queries before any AI call is made. |
-| **Output Validation Guardrail** | Sanitizes Claude's JSON output -- enforces known genre/mood values, clamps energy to [0, 1], surfaces confidence score and warnings to the user. |
-| **Quality Assessment** | Rates recommendation quality (excellent/good/fair/poor) based on top score ratio and provides a confidence label. |
-| **AI Narrative Generator** | After ranking, Claude writes a 2-3 sentence plain-English explanation of why the top songs match the request. |
-| **Evaluation Harness** | Runs 8 predefined test cases offline and prints a pass/fail report with confidence scores (no API key required). |
+| New Feature | Category | What It Does |
+|-------------|----------|-------------|
+| **RAG Knowledge Base** | RAG | 37 documents covering genres, activities, and moods. Retrieved before parsing to ground Gemini's understanding. |
+| **Semantic Embedding Index** | RAG | Gemini `text-embedding-004` embeds all docs and the query; cosine similarity finds the most relevant context. Cached to disk. |
+| **7-Step Agentic Workflow** | Agentic | Observable pipeline: Safety -> RAG -> Parse -> Validate -> Mode Selection -> Recommend+Retry -> Narrate. |
+| **Agent Mode Selection** | Agentic | Agent analyzes parsed profile and query to pick the best scoring mode (energy_focused / mood_first / genre_first / balanced). Retries with diversity if quality is poor. |
+| **Few-Shot Specialization** | Specialization | 6 curated examples in the parsing prompt improve confidence and accuracy on indirect activity-based queries vs. zero-shot baseline. |
+| **Input Safety Guardrail** | Reliability | Blocks off-topic/harmful queries before any AI call. |
+| **Output Validation Guardrail** | Reliability | Sanitizes Gemini's JSON: enforces known genre/mood values, clamps energy, surfaces warnings. |
+| **Quality Assessment** | Reliability | Rates results excellent/good/fair/poor; agent retries on poor quality. |
+| **Evaluation Harness** | Reliability | 16 test cases covering core pipeline, RAG retrieval accuracy, and agent mode selection -- all offline. |
 
 ---
 
@@ -35,22 +38,30 @@ See [assets/architecture.md](assets/architecture.md) for the full component diag
 User text query
       |
       v
-[Safety Guardrail] --blocked--> "Request blocked" message
+[Step 1: Safety Guardrail] --blocked--> "Request blocked" message
       | safe
       v
-[Claude Haiku] -- parse to JSON --> {genre, mood, energy, likes_acoustic, confidence}
+[Step 2: RAG Retrieval]  knowledge_base.json (37 docs)
+  Gemini text-embedding-004 embeds query + docs -> cosine similarity
+  -> top-3 relevant docs (e.g., "Gym/Workout" | "EDM Genre" | "Workout+EDM combo")
+      |  context text
+      v
+[Step 3: Gemini Parse] few-shot specialized prompt + retrieved context
+  -> {genre, mood, energy, likes_acoustic, confidence}
       |
       v
-[Validation Guardrail] -- sanitize --> warnings + clean profile
+[Step 4: Validation Guardrail] enforce known values, clamp ranges, surface warnings
+      |  clean profile
+      v
+[Step 5: Agent Mode Selection] analyze profile + query -> pick scoring mode
+  energy_focused | mood_first | genre_first | balanced
+      |  mode
+      v
+[Step 6: Rule-Based Recommender] score 18 songs -> ranked list
+  [Retry if quality == poor: switch to balanced + diversity re-ranking]
       |
       v
-[Rule-Based Recommender] -- score 18 songs --> ranked (song, score, reasons)
-      |
-      v
-[Quality Assessor] -- score_ratio --> quality label (excellent/good/fair/poor)
-      |
-      v
-[Claude Haiku] -- narrative --> "Here's why these songs match..."
+[Step 7: Gemini Narrator] 2-3 sentence plain-English explanation
       |
       v
 Formatted table: Title | Genre/Mood | Score | Bar | Key Reasons
@@ -60,14 +71,17 @@ Formatted table: Title | Genre/Mood | Score | Bar | Key Reasons
 
 | Component | File | Role |
 |-----------|------|------|
+| Knowledge Base | `data/knowledge_base.json` | 37 genre/activity/mood documents for RAG |
+| Embeddings Cache | `data/embeddings_cache.json` | Pre-computed doc embeddings (auto-generated) |
+| RAG System | `src/rag.py` | Semantic retrieval (Gemini embeddings) + keyword fallback |
+| AI Agent | `src/ai_agent.py` | Few-shot NL parser + context-aware parser + narrator |
+| Agent Orchestrator | `src/agent.py` | 7-step agentic workflow with mode selection + retry |
 | Safety Guardrail | `src/guardrails.py` | Blocks off-topic/malformed queries |
-| Claude NL Parser | `src/ai_agent.py` | Free text -> structured profile |
-| Validation Guardrail | `src/guardrails.py` | Sanitizes AI output |
-| Recommender Engine | `src/recommender.py` | Scores and ranks songs (unchanged from v1) |
-| Quality Assessor | `src/guardrails.py` | Rates result quality + confidence |
-| Claude Narrator | `src/ai_agent.py` | Natural language explanation of results |
-| CLI Runner | `src/main.py` | Orchestrates all components |
-| Evaluation Harness | `src/evaluation.py` | Offline pass/fail test suite |
+| Validation Guardrail | `src/guardrails.py` | Sanitizes Gemini's JSON output |
+| Quality Assessor | `src/guardrails.py` | Rates result quality; triggers agent retry |
+| Recommender Engine | `src/recommender.py` | Weighted scoring + diversity re-ranking (unchanged from v1) |
+| CLI Runner | `src/main.py` | `--agent`, `--nl`, `--compare`, `--interactive`, `--evaluate` |
+| Evaluation Harness | `src/evaluation.py` | 16 offline test cases (core + RAG + agent) |
 
 ---
 
@@ -108,33 +122,43 @@ Get a free key at [Google AI Studio](https://aistudio.google.com/). The original
 python -m src.main
 ```
 
-Runs all six test profiles through the recommender, compares four scoring modes, and demonstrates diversity re-ranking.
+### Full agentic pipeline: RAG + few-shot + mode selection + retry (requires GEMINI_API_KEY)
 
-### Natural language query (requires ANTHROPIC_API_KEY)
+```bash
+python -m src.main --agent "upbeat pop for a party"
+python -m src.main --agent "something chill for studying"
+python -m src.main --agent "sad songs for a rainy Sunday"
+```
+
+Shows all 7 agent steps with reasoning visible at each stage.
+
+### Few-shot vs zero-shot specialization comparison (requires GEMINI_API_KEY)
+
+```bash
+python -m src.main --compare
+```
+
+### Natural language mode -- few-shot only, no RAG (requires GEMINI_API_KEY)
 
 ```bash
 python -m src.main --nl "something chill and acoustic for studying"
-python -m src.main --nl "high energy bangers for the gym"
-python -m src.main --nl "melancholic jazz for a rainy Sunday"
 ```
 
-### Interactive REPL (requires ANTHROPIC_API_KEY)
+### Interactive REPL -- agentic mode (requires GEMINI_API_KEY)
 
 ```bash
 python -m src.main --interactive
 ```
 
-Type queries at the `>>` prompt. Type `quit` to exit.
-
-### Evaluation harness (no API key needed)
+### Evaluation harness -- 16 test cases, no API key needed
 
 ```bash
 python -m src.main --evaluate
 ```
 
-Runs 8 predefined test cases and prints a pass/fail report.
+Covers core pipeline, RAG retrieval accuracy, and agent mode selection.
 
-### Tests
+### Unit tests
 
 ```bash
 pytest
@@ -144,138 +168,168 @@ pytest
 
 ## Sample Interactions
 
-### Example 1: Gym workout query
+### Example 1: Full agentic pipeline (gym query)
 
-**Input:**
 ```
-python -m src.main --nl "high energy music for the gym, electronic beats"
+python -m src.main --agent "high energy music for the gym, electronic beats"
 ```
 
-**Output (condensed):**
 ```
-Loaded 18 songs from catalog.
+[Agent] Building/loading RAG index...
+[Agent] Query: "high energy music for the gym, electronic beats"
+        Mode: Gemini + Semantic RAG
 
-====================================================================
-  QUERY   : high energy music for the gym, electronic beats
-  PARSED  : genre=-  mood=intense  energy=0.85  acoustic=False  confidence=88%
-====================================================================
-  Quality : EXCELLENT -- High confidence -- strong match found
-  Scores  : top=5.91/7.5  avg=4.23/7.5
+  Step 1/7  [SAFETY      ] Safe -- proceeding.
+  Step 2/7  [RAG         ] [semantic] Top docs: "Gym / Workout / Exercise" (0.91) |
+                           "EDM (Electronic Dance Music) Genre" (0.88) |
+                           "High-Intensity Workout + EDM" (0.85)
+  Step 3/7  [PARSE       ] genre=-          mood=intense      energy=0.88
+                           acoustic=False   confidence=91%
+  Step 4/7  [VALIDATE    ] Profile clean -- no issues.
+  Step 5/7  [MODE        ] 'energy_focused' -- activity/energy signal detected (energy=0.88)
+  Step 6/7  [RECOMMEND   ] top=5.55/7.5  quality=GOOD  genre_hits=0  mood_hits=3
+  Step 7/7  [NARRATE     ] Narrative generated.
+[Agent] Done. Good match -- most preferences satisfied.
 
-  AI says : These songs deliver the high-octane energy you need for a gym
-  session. Pulse Grid and Gym Hero both hit energy levels above 0.90 with
-  electronic, non-acoustic production that's built for intensity. Storm
-  Runner rounds out the list with a driving rock energy that keeps your
-  adrenaline up throughout your workout.
+  AI says: These tracks are engineered for high-intensity effort. Pulse Grid
+  and Gym Hero both sit above 0.90 energy with electronic, non-acoustic
+  production -- exactly what you need to push through a tough set. Storm
+  Runner adds a rock-driven edge for when the beat needs to hit harder.
 
-  ─────────────────────────────────────────────────────────────────
-  PROFILE : NL: "high energy music for the gym, electronic beats"
-  MODE    : balanced
-  ─────────────────────────────────────────────────────────────────
-  #  Title           Genre / Mood     Score         Bar       Key reasons
-  ─  ──────────────  ───────────────  ────────────  ────────  ──────────────────────────────────────────────────────
-  #1 Pulse Grid      edm / energetic  5.91/7.5  ################  energy proximity: 0.94 vs target 0.85 (+1.36)
-  #2 Gym Hero        pop / intense    5.55/7.5  ##############.   energy proximity: 0.93 vs target 0.85 (+1.32)
-  #3 Storm Runner    rock / intense   5.23/7.5  #############.    energy proximity: 0.91 vs target 0.85 (+1.29)
+  #1  Pulse Grid    edm / energetic   5.55/7.5  energy proximity: 0.94 vs 0.88
+  #2  Gym Hero      pop / intense     5.33/7.5  mood match: intense; energy: 0.93
+  #3  Storm Runner  rock / intense    4.91/7.5  mood match: intense; energy: 0.91
 ```
 
 ---
 
-### Example 2: Studying / focus query
+### Example 2: Agentic pipeline (studying query)
 
-**Input:**
 ```
-python -m src.main --nl "something chill and focused for studying, preferably acoustic"
+python -m src.main --agent "chill lofi beats to study to, something acoustic"
 ```
 
-**Output (condensed):**
 ```
-====================================================================
-  QUERY   : something chill and focused for studying, preferably acoustic
-  PARSED  : genre=-  mood=focused  energy=0.40  acoustic=True  confidence=82%
-====================================================================
-  Quality : EXCELLENT -- High confidence -- strong match found
-  Scores  : top=6.29/7.5  avg=4.81/7.5
+  Step 2/7  [RAG         ] Top docs: "Focus + Lo-Fi Study Session" (0.94) |
+                           "Studying / Focus / Concentration" (0.92) |
+                           "Lo-Fi Hip-Hop Genre" (0.89)
+  Step 3/7  [PARSE       ] genre=lofi       mood=focused      energy=0.40
+                           acoustic=True    confidence=93%
+  Step 5/7  [MODE        ] 'genre_first' -- explicit genre with high confidence
+  Step 6/7  [RECOMMEND   ] top=6.29/7.5  quality=EXCELLENT  genre_hits=3
 
-  AI says : These picks create the perfect studying atmosphere with calm,
-  focused energy under 0.45. Library Rain and Focus Flow are built for
-  concentration -- both have high acousticness and the unhurried lofi
-  rhythm that blends into the background without distracting you.
-
-  #1 Library Rain    lofi / chill    6.29/7.5   mood match: chill; energy proximity: 0.35 vs 0.40
-  #2 Focus Flow      lofi / focused  6.14/7.5   mood match: focused; energy proximity: 0.40 vs 0.40
-  #3 Midnight Coding lofi / chill    5.52/7.5   energy proximity: 0.42 vs 0.40
+  #1  Library Rain    lofi / chill    6.29/7.5  genre+mood match; energy 0.35 vs 0.40
+  #2  Focus Flow      lofi / focused  6.14/7.5  genre+mood match; energy 0.40 vs 0.40
+  #3  Midnight Coding lofi / chill    5.52/7.5  genre match; energy 0.42 vs 0.40
 ```
 
 ---
 
-### Example 3: Safety guardrail blocks an off-topic query
+### Example 3: Safety guardrail
 
-**Input:**
 ```
-python -m src.main --nl "explain quantum physics to me"
+python -m src.main --agent "explain quantum physics to me"
 ```
 
-**Output:**
 ```
-  [Guardrail] Request blocked: Query does not appear to be a music request.
-  Please describe the music you want.
+  Step 1/7  [SAFETY      ] BLOCKED -- Query does not appear to be a music request.
 ```
 
 ---
 
-### Example 4: Evaluation harness output
+### Example 4: Specialization comparison (zero-shot vs few-shot)
+
+```
+python -m src.main --compare
+```
+
+```
+========================================================================
+  SPECIALIZATION COMPARISON: Zero-Shot Baseline vs Few-Shot Specialized
+========================================================================
+  Query                                   Mode        Genre       Mood          Energy  Conf
+  ----------------------------------------------------------------------------------------
+  I need something high energy for...     zero-shot   -           -             0.50    45%
+  I need something high energy for...     few-shot    -           intense       0.88    87%
+  ----------------------------------------------------------------------------------------
+  something sad for a rainy Sunday...     zero-shot   -           -             0.50    40%
+  something sad for a rainy Sunday...     few-shot    -           melancholic   0.30    82%
+  ----------------------------------------------------------------------------------------
+  good vibes                              zero-shot   -           happy         0.60    55%
+  good vibes                              few-shot    -           happy         0.65    48%
+  ----------------------------------------------------------------------------------------
+  Expected: few-shot rows show higher confidence and more accurate
+  energy/mood extraction for activity-based and emotion-driven queries.
+```
+
+---
+
+### Example 5: Evaluation harness (16 test cases, offline)
 
 ```
 python -m src.main --evaluate
 ```
 
 ```
-======================================================================
+========================================================================
   VibeFinder 2.0 -- Evaluation Harness
-  Mode: OFFLINE (keyword-based profile; no API key required)
-======================================================================
+  Sections: Core Pipeline | RAG Retrieval | Agent Mode Selection
+========================================================================
 
-Test Case                           Status  Confidence  Top Score  Quality
-----------------------------------  ------  ----------  ---------  --------
-Gym workout energy                  PASS    50%         5.55       good
-Chill studying session              PASS    50%         6.29       excellent
-Sad rainy day                       PASS    50%         4.60       good
-Pop party bangers                   PASS    50%         6.85       excellent
-Off-topic safety check              PASS    n/a         0.00       n/a
-Short nonsense query                PASS    n/a         0.00       n/a
-Jazz coffee shop                    PASS    50%         5.14       good
-Confidence on vague query           PASS    50%         3.52       fair
-----------------------------------  ------  ----------  ---------  --------
-  Result: 8/8 passed  (100%)
-  All checks passed.
+  -- SECTION 1: Core Pipeline --
+  Test Case                                   Status  Confidence  Top Score  Result
+  ------------------------------------------  ------  ----------  ---------  --------
+  Gym workout -- high energy                  PASS    50%         3.75       fair
+  Chill studying -- acoustic                  PASS    50%         4.25       good
+  Sad rainy day -- melancholic                PASS    50%         3.44       fair
+  Pop party bangers -- genre + mood           PASS    50%         5.87       excellent
+  Off-topic query -- safety block             PASS    n/a         0.00       blocked
+  Too-short query -- safety block             PASS    n/a         0.00       blocked
+  Jazz coffee shop                            PASS    50%         3.98       fair
+  Vague query -- low confidence expected      PASS    50%         2.11       poor
+
+  -- SECTION 2: RAG Retrieval --
+  RAG: gym query retrieves gym/workout doc    PASS    n/a         n/a        retrieval
+  RAG: study query retrieves study/focus doc  PASS    n/a         n/a        retrieval
+  RAG: sad query retrieves sad/heartbreak doc PASS    n/a         n/a        retrieval
+  RAG: party query retrieves party doc        PASS    n/a         n/a        retrieval
+  RAG: meditation query retrieves medit. doc  PASS    n/a         n/a        retrieval
+
+  -- SECTION 3: Agent Mode Selection --
+  Mode: gym query -> energy_focused           PASS    n/a         n/a        mode
+  Mode: sad query -> mood_first               PASS    n/a         n/a        mode
+  Mode: jazz + high confidence -> genre_first PASS    n/a         n/a        mode
+
+  Result: 16/16 passed  (100%)
 ```
 
 ---
 
 ## Design Decisions
 
-**Why Gemini 2.0 Flash?** The NL query parsing task is short, structured, and latency-sensitive. Gemini Flash is fast and inexpensive for JSON extraction. The narrative generation is also brief (2-3 sentences) so its context window is not a constraint.
+**RAG before parsing, not after.** The retrieved context is injected into the Gemini prompt before the query is parsed. This means knowledge about "gym music requires high energy + edm/metal" informs the energy/mood extraction, rather than just annotating results after the fact.
 
-**Why two guardrail layers?** The safety guardrail runs before the API call to avoid wasting tokens on nonsense queries. The validation guardrail runs after Claude responds to catch hallucinated genre/mood labels before they reach the recommender -- for example, Claude might return "lofi-hop" which is not in the catalog.
+**Semantic embeddings with keyword fallback.** Gemini `text-embedding-004` provides true semantic retrieval ("pump up music" finds the gym doc even without the word "gym"). The keyword fallback lets the evaluation harness and offline mode run without an API key.
 
-**Why keep the rule-based recommender?** Transparency. The scoring formula explains exactly why each song was chosen. A pure LLM recommender would be harder to audit. The hybrid design lets Claude handle natural language understanding while the rule engine handles explainable ranking.
+**Agent mode selection changes system behavior.** The recommender has four scoring modes that produce genuinely different playlists. The agent picks the mode that matches the parsed profile: activity queries -> `energy_focused`, emotion queries -> `mood_first`, specific genre -> `genre_first`. This is a non-trivial decision that meaningfully changes output.
 
-**Why an offline evaluation harness?** The evaluation harness uses keyword heuristics instead of Claude so that it can run in CI without an API key. It verifies the pipeline's structural correctness (safety blocking, energy parsing, quality assessment) independent of Claude's output.
+**Few-shot specialization is demonstrably different from zero-shot.** The `--compare` mode shows this directly: on activity-based queries like "high energy for the gym", zero-shot often returns energy=0.5 with 40% confidence while few-shot returns energy=0.88 with 87% confidence because the examples teach the model the gym->high-energy mapping.
+
+**Why keep the rule-based recommender?** Transparency and auditability. The scoring formula explains exactly why each song was chosen. A pure LLM recommender would be a black box. The hybrid design gives the system both natural language understanding (Gemini) and interpretable ranking (rule engine).
 
 ---
 
 ## Testing Summary
 
-- **8/8 evaluation harness cases pass** in offline mode.
-- **2 tests explicitly verify safety blocking** (off-topic + too-short queries are rejected).
-- **6 tests verify recommender quality** (top score above threshold, quality not "poor").
-- **2 existing pytest tests** verify the OOP recommender interface.
-- Guardrail unit coverage: genre/mood validation, energy clamping, confidence threshold warning.
+- **16/16 evaluation harness cases pass** in offline mode (8 core pipeline, 5 RAG retrieval, 3 agent mode selection).
+- **2 tests verify safety blocking** (off-topic + too-short queries rejected before any API call).
+- **5 RAG tests verify retrieval accuracy** (gym query must retrieve gym doc, etc.) using keyword matching.
+- **3 agent tests verify mode selection logic** (gym->energy_focused, sad->mood_first, explicit genre->genre_first).
+- **2 existing pytest unit tests** verify the OOP recommender interface.
 
-**What worked:** The two-guardrail design caught every hallucinated genre in manual testing. The confidence score surfaced ambiguous queries correctly.
+**What worked:** RAG retrieval was accurate in both semantic and keyword modes. The few-shot specialization produced measurably higher confidence on activity-based queries. The agent's mode selection decision correctly identified energy_focused for gym queries and mood_first for emotional queries in all offline tests.
 
-**What didn't:** The offline keyword parser is too blunt for queries like "good music" -- it assigns neutral defaults rather than flagging ambiguity. The real Claude parser handles these much better by returning low confidence.
+**What didn't:** The offline keyword parser is too blunt for vague queries like "good music". The agent's retry logic only triggers on "poor" quality; "fair" results don't get a second pass, which means borderline cases get no improvement. The embedding cache must be rebuilt if the knowledge base changes.
 
 ---
 
@@ -315,16 +369,19 @@ Claude was used in three ways during development:
 ```
 applied-ai-system-project/
 ├── src/
-│   ├── main.py           # CLI entry point; --nl / --interactive / --evaluate
+│   ├── main.py           # CLI: --agent / --nl / --compare / --interactive / --evaluate
 │   ├── recommender.py    # Rule-based scoring engine (unchanged from v1)
-│   ├── ai_agent.py       # NEW: Claude NL parser + recommendation narrator
-│   └── guardrails.py     # NEW: Safety + validation guardrails + quality assessment
-├── src/
-│   └── evaluation.py     # NEW: Offline evaluation harness (8 test cases)
+│   ├── ai_agent.py       # Gemini NL parser (zero-shot + few-shot + context-aware) + narrator
+│   ├── guardrails.py     # Safety + validation guardrails + quality assessment
+│   ├── rag.py            # NEW: RAG system (Gemini embeddings + keyword fallback + cache)
+│   ├── agent.py          # NEW: 7-step agentic workflow orchestrator
+│   └── evaluation.py     # Evaluation harness (16 cases: core + RAG + agent)
 ├── tests/
 │   └── test_recommender.py
 ├── data/
-│   └── songs.csv         # 18-song catalog
+│   ├── songs.csv              # 18-song catalog
+│   ├── knowledge_base.json    # NEW: 37 RAG documents (genres, activities, moods)
+│   └── embeddings_cache.json  # Auto-generated on first --agent run (gitignored)
 ├── assets/
 │   └── architecture.md   # Full system architecture diagram
 ├── model_card.md

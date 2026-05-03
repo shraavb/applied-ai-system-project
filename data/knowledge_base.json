@@ -1,0 +1,302 @@
+{
+  "version": "1.0",
+  "description": "VibeFinder 2.0 RAG knowledge base: genre profiles, activity contexts, and mood mappings used to enrich natural language query parsing.",
+  "documents": [
+
+    {
+      "id": "act_gym",
+      "type": "activity",
+      "title": "Gym / Workout / Exercise",
+      "content": "Working out at the gym, weightlifting, running, or any intense physical exercise requires music with very high energy (0.80-1.00). Ideal moods are intense, energetic, or angry to match physical effort. Electronic beats, heavy guitars, and pounding EDM work best. Acoustic instruments should be avoided. Fast tempo (130+ BPM) keeps pace. Best genres: edm, metal, rock, hip-hop, pop. Not suitable: classical, lofi, ambient, folk, jazz.",
+      "tags": ["gym", "workout", "exercise", "running", "weightlifting", "training", "pump", "cardio", "sweat"]
+    },
+
+    {
+      "id": "act_study",
+      "type": "activity",
+      "title": "Studying / Focus / Concentration",
+      "content": "Studying, focusing, coding, reading, or deep cognitive work benefits from low-to-medium energy music (0.30-0.50) that does not distract. Ideal moods: focused or chill. Acoustic textures are preferred for warmth without overload. Instrumental tracks or tracks with minimal vocals prevent lyrical interference. Best genres: lofi, ambient, classical, jazz. Popularity tends to be lower. Tempo: 60-90 BPM.",
+      "tags": ["study", "studying", "focus", "concentration", "work", "coding", "reading", "homework", "productive", "quiet", "background"]
+    },
+
+    {
+      "id": "act_party",
+      "type": "activity",
+      "title": "Party / Social Gathering / Dancing",
+      "content": "Parties, social gatherings, and dancing require high-energy music (0.75-0.97) that is crowd-friendly and mainstream. Ideal moods: happy, energetic, or confident. Low acousticness (electronic production preferred). High popularity (70-100) ensures guests recognize the tracks. Fast tempo, strong beat. Best genres: pop, edm, hip-hop, reggae. Not suitable: metal, classical, ambient, folk.",
+      "tags": ["party", "dance", "dancing", "social", "fun", "celebration", "club", "night out", "crowd", "mainstream", "banger"]
+    },
+
+    {
+      "id": "act_drive",
+      "type": "activity",
+      "title": "Driving / Road Trip",
+      "content": "Driving and road trips suit mid-to-high energy music (0.55-0.85) with a strong rhythmic pulse. Moods: energetic, nostalgic, or confident. Both acoustic and electronic work well. Genres: rock, country, pop, hip-hop, synthwave. Long-form listening means variety is appreciated, making diversity re-ranking useful.",
+      "tags": ["driving", "drive", "road trip", "car", "commute", "highway", "travel"]
+    },
+
+    {
+      "id": "act_sleep",
+      "type": "activity",
+      "title": "Sleeping / Bedtime / Wind Down",
+      "content": "Falling asleep or winding down requires very low energy music (0.10-0.30). Ideal moods: peaceful or relaxed. High acousticness preferred (0.70-1.00). Slow tempo, minimal percussion, no sudden dynamics. Best genres: classical, ambient, folk, lofi. Popularity is secondary; quality of calm matters most.",
+      "tags": ["sleep", "sleeping", "bedtime", "wind down", "relax", "calm", "night", "rest", "peaceful", "quiet"]
+    },
+
+    {
+      "id": "act_coffee",
+      "type": "activity",
+      "title": "Coffee Shop / Cafe / Daytime Background",
+      "content": "Coffee shop or cafe atmospheres benefit from low-to-medium energy music (0.30-0.55) with a relaxed, intelligent feel. Moods: relaxed, chill, or focused. Moderate acousticness. Genres: jazz, lofi, indie pop, folk. Tempo: 70-100 BPM. Not too loud or distracting.",
+      "tags": ["coffee", "cafe", "coffee shop", "morning", "brunch", "daytime", "cozy", "warm", "relaxed", "background"]
+    },
+
+    {
+      "id": "act_meditation",
+      "type": "activity",
+      "title": "Meditation / Yoga / Mindfulness",
+      "content": "Meditation and yoga require the lowest energy levels (0.10-0.25). Mood: peaceful. Very high acousticness (0.80-1.00). Slow, minimal, drone-like or classical instrumentation. Genres: classical, ambient. No lyrics. Tempo: 50-70 BPM. The goal is to fade into the background without creating emotional distraction.",
+      "tags": ["meditation", "yoga", "mindfulness", "zen", "tranquil", "spiritual", "breathe", "serene", "stillness"]
+    },
+
+    {
+      "id": "act_sad",
+      "type": "activity",
+      "title": "Sad / Heartbreak / Emotional Release",
+      "content": "Feeling sad, going through heartbreak, or wanting an emotional release calls for melancholic or moody music. Energy range: 0.20-0.50. Moods: melancholic, moody, or nostalgic. Acoustic instruments are commonly preferred for authenticity. Genres: indie pop, folk, r&b, country, classical. Low energy and high acousticness make the music feel intimate.",
+      "tags": ["sad", "sadness", "heartbreak", "breakup", "cry", "lonely", "blue", "emotional", "gloomy", "rainy day", "melancholy", "depressed"]
+    },
+
+    {
+      "id": "act_morning",
+      "type": "activity",
+      "title": "Morning Routine / Wake Up",
+      "content": "Morning routines benefit from moderate energy music (0.50-0.75) that gradually energizes without overwhelming. Moods: happy, energetic, or confident. Moderate acousticness is fine. Genres: pop, indie pop, r&b, reggae. A positive and uplifting feel helps start the day right. Tempo: 90-120 BPM.",
+      "tags": ["morning", "wake up", "sunrise", "breakfast", "start the day", "energize", "routine", "fresh", "uplifting"]
+    },
+
+    {
+      "id": "act_latenight",
+      "type": "activity",
+      "title": "Late Night / Introspective / Moody",
+      "content": "Late-night listening tends toward introspective, atmospheric music with medium energy (0.40-0.70). Moods: moody, nostalgic, or chill. Both acoustic and electronic work. Genres: synthwave, r&b, jazz, lofi, indie pop. Lyrics that tell stories resonate well. Tempo: 75-110 BPM.",
+      "tags": ["late night", "midnight", "introspective", "moody", "atmospheric", "alone", "thinking", "night vibes", "after midnight", "dark"]
+    },
+
+    {
+      "id": "act_romantic",
+      "type": "activity",
+      "title": "Romantic / Date Night",
+      "content": "Romantic settings call for warm, intimate music with medium energy (0.45-0.70). Mood: romantic or peaceful. Moderate-to-high acousticness. Genres: r&b, jazz, indie pop, folk. High valence (positivity) helps create warmth. Smooth vocals and melodic instrumentation set the tone. Tempo: 75-100 BPM.",
+      "tags": ["romantic", "romance", "date", "love", "intimate", "dinner", "evening", "couple", "valentines"]
+    },
+
+    {
+      "id": "genre_pop",
+      "type": "genre",
+      "title": "Pop Music Genre",
+      "content": "Pop music is characterized by catchy melodies, polished production, and mainstream appeal. Energy: 0.70-0.95 for upbeat tracks, 0.40-0.65 for ballads. Moods: happy, energetic, romantic. Very high popularity (75-95). Low acousticness (0.05-0.35). Good for parties, driving, and casual listening. Tempo: 100-135 BPM.",
+      "tags": ["pop", "mainstream", "chart", "radio", "catchy", "upbeat", "happy", "popular"]
+    },
+
+    {
+      "id": "genre_lofi",
+      "type": "genre",
+      "title": "Lo-Fi Hip-Hop Genre",
+      "content": "Lo-fi hip-hop features low-fidelity audio, jazzy chord samples, soft drums, and a warm, nostalgic aesthetic. Energy: 0.30-0.50. Moods: chill, focused, or relaxed. High acousticness (0.60-0.90). Often instrumental or minimal vocals. Popularity tends to be moderate. Beloved for studying and focus sessions. Tempo: 70-90 BPM.",
+      "tags": ["lofi", "lo-fi", "chill", "study", "hip hop beats", "jazzy", "mellow", "vinyl", "nostalgic", "bedroom pop"]
+    },
+
+    {
+      "id": "genre_rock",
+      "type": "genre",
+      "title": "Rock Music Genre",
+      "content": "Rock music is driven by electric guitars, strong drum beats, and powerful vocals. Energy: 0.70-0.95. Moods: intense, angry, or energetic. Low acousticness (0.05-0.25). Moderate-to-high popularity. Subgenres range from classic rock to modern alternative. Tempo: 110-168 BPM. Good for working out, driving, and emotional release.",
+      "tags": ["rock", "electric guitar", "drums", "intense", "powerful", "loud", "alternative", "classic rock", "hard"]
+    },
+
+    {
+      "id": "genre_jazz",
+      "type": "genre",
+      "title": "Jazz Music Genre",
+      "content": "Jazz is defined by improvisation, complex harmonies, and acoustic instrumentation. Energy: 0.30-0.65. Moods: relaxed, moody, or focused. High acousticness (0.60-0.95). Moderate popularity. Subgenres range from cool jazz to bebop. Tempo: 70-120 BPM. Excellent for coffee shops, late nights, and intellectual listening.",
+      "tags": ["jazz", "improvisation", "acoustic", "saxophone", "piano", "trumpet", "relaxed", "cool", "swing", "bebop"]
+    },
+
+    {
+      "id": "genre_ambient",
+      "type": "genre",
+      "title": "Ambient / Atmospheric Genre",
+      "content": "Ambient music prioritizes texture and atmosphere over melody and rhythm. Energy: 0.15-0.40. Moods: peaceful, chill, or relaxed. Very high acousticness (0.75-0.98). Lower popularity. Minimal or absent percussion. Good for sleeping, meditation, and deep focus. Tempo: 50-80 BPM or arrhythmic.",
+      "tags": ["ambient", "atmospheric", "texture", "drone", "soundscape", "peaceful", "meditation", "background", "calm", "space"]
+    },
+
+    {
+      "id": "genre_synthwave",
+      "type": "genre",
+      "title": "Synthwave Genre",
+      "content": "Synthwave is a retro-futuristic genre inspired by 1980s electronic music. Energy: 0.60-0.85. Moods: moody, nostalgic, or energetic. Very low acousticness (0.05-0.25). Driving synth arpeggios, pulsing bass, and cinematic pads. Moderate popularity. Good for driving at night, gaming, and working late. Tempo: 100-130 BPM.",
+      "tags": ["synthwave", "synth", "80s", "retro", "neon", "cyberpunk", "electronic", "nightdrive", "outrun"]
+    },
+
+    {
+      "id": "genre_indiepop",
+      "type": "genre",
+      "title": "Indie Pop Genre",
+      "content": "Indie pop blends catchy pop songwriting with independent production aesthetics. Energy: 0.55-0.80. Moods: happy, nostalgic, or romantic. Moderate acousticness (0.25-0.55). Moderate popularity (65-82). Good for casual listening, morning routines, and social settings. Tempo: 100-130 BPM.",
+      "tags": ["indie pop", "indie", "alternative pop", "bedroom pop", "jangly", "dreamy", "feel-good"]
+    },
+
+    {
+      "id": "genre_hiphop",
+      "type": "genre",
+      "title": "Hip-Hop Genre",
+      "content": "Hip-hop centers on rhythmic vocal delivery (rap) over produced beats. Energy: 0.65-0.95. Moods: confident, energetic, or moody. Low acousticness (0.05-0.20). High popularity (80-95). Strong beat and bass. Good for workouts, confidence boosts, and parties. Tempo: 80-120 BPM.",
+      "tags": ["hip hop", "rap", "trap", "beats", "confident", "hype", "urban", "bass", "party", "hype"]
+    },
+
+    {
+      "id": "genre_classical",
+      "type": "genre",
+      "title": "Classical Music Genre",
+      "content": "Classical music encompasses orchestral, chamber, and solo instrumental compositions. Energy: 0.15-0.45. Moods: peaceful, focused, or nostalgic. Very high acousticness (0.85-1.00). Lower popularity. Dynamic range from pianissimo to fortissimo. Great for studying, meditation, and relaxation. Tempo varies widely.",
+      "tags": ["classical", "orchestra", "piano", "violin", "symphony", "acoustic", "elegant", "sophisticated", "peaceful", "focus"]
+    },
+
+    {
+      "id": "genre_rnb",
+      "type": "genre",
+      "title": "R&B Genre",
+      "content": "R&B (rhythm and blues) blends soulful vocals with groovy production. Energy: 0.50-0.80. Moods: romantic, confident, or moody. Moderate acousticness (0.30-0.55). High popularity (65-85). Smooth, sensual production. Great for romantic evenings, late nights, and cruising. Tempo: 75-110 BPM.",
+      "tags": ["rnb", "r&b", "soul", "groove", "smooth", "romantic", "soulful", "neo-soul"]
+    },
+
+    {
+      "id": "genre_country",
+      "type": "genre",
+      "title": "Country Music Genre",
+      "content": "Country music features storytelling lyrics, acoustic guitars, and American folk influences. Energy: 0.40-0.70. Moods: nostalgic, relaxed, or happy. High acousticness (0.60-0.85). Moderate popularity (58-75). Themes of home, heartbreak, and open roads. Good for driving, unwinding, and road trips. Tempo: 90-120 BPM.",
+      "tags": ["country", "folk", "acoustic", "storytelling", "nostalgic", "southern", "americana", "guitar", "open road"]
+    },
+
+    {
+      "id": "genre_metal",
+      "type": "genre",
+      "title": "Metal Music Genre",
+      "content": "Metal is defined by heavily distorted guitars, fast tempos, and aggressive dynamics. Energy: 0.90-1.00. Moods: angry or intense. Very low acousticness (0.02-0.10). Moderate popularity. High BPM (150-200+). Best for extreme workouts, emotional release of aggression, and fans of heavy music. Not suitable for background or social settings.",
+      "tags": ["metal", "heavy metal", "hard rock", "aggressive", "intense", "loud", "distortion", "headbang", "angry", "thrash", "extreme"]
+    },
+
+    {
+      "id": "genre_reggae",
+      "type": "genre",
+      "title": "Reggae Genre",
+      "content": "Reggae features offbeat rhythms, bass-heavy production, and a laid-back groove. Energy: 0.45-0.70. Moods: peaceful, relaxed, or happy. Moderate acousticness (0.45-0.70). Moderate popularity (55-70). A positive, feel-good vibe. Good for relaxing, beach settings, and social occasions. Tempo: 70-100 BPM.",
+      "tags": ["reggae", "jamaican", "island", "laid back", "peaceful", "roots", "groove", "bass", "beach", "summer"]
+    },
+
+    {
+      "id": "genre_edm",
+      "type": "genre",
+      "title": "EDM (Electronic Dance Music) Genre",
+      "content": "EDM encompasses house, techno, dubstep, and trance -- all high-energy electronic dance music. Energy: 0.85-1.00. Moods: energetic or happy. Very low acousticness (0.01-0.10). Very high popularity (85-95). Heavy bass, 4-on-the-floor kick drums, and synthesizer leads. Best for parties, clubs, and intense workouts. Tempo: 128-160 BPM.",
+      "tags": ["edm", "electronic", "dance", "house", "techno", "rave", "festival", "drop", "bass", "club", "party", "energy"]
+    },
+
+    {
+      "id": "genre_folk",
+      "type": "genre",
+      "title": "Folk Music Genre",
+      "content": "Folk music centers on acoustic instruments, storytelling, and rootsy tradition. Energy: 0.25-0.50. Moods: nostalgic, melancholic, or relaxed. Very high acousticness (0.75-0.95). Lower popularity (38-55). Acoustic guitar, banjo, fiddle. Excellent for quiet evenings, sad moods, and introspective listening. Tempo: 70-100 BPM.",
+      "tags": ["folk", "acoustic", "storytelling", "nostalgic", "melancholic", "roots", "singer-songwriter", "guitar", "organic", "earthy"]
+    },
+
+    {
+      "id": "mood_happy",
+      "type": "mood",
+      "title": "Happy / Joyful / Upbeat Mood",
+      "content": "Happy music conveys joy, positivity, and elation. High valence (0.70-0.95). Energy: 0.65-0.90. Synonyms: upbeat, cheerful, joyful, bright, fun, feel-good, sunny. Associated genres: pop, indie pop, reggae. Associated activities: parties, morning routines, celebrations.",
+      "tags": ["happy", "joy", "upbeat", "cheerful", "positive", "feel-good", "bright", "sunny", "fun", "celebratory"]
+    },
+
+    {
+      "id": "mood_chill",
+      "type": "mood",
+      "title": "Chill / Laid-Back Mood",
+      "content": "Chill music is relaxed and unhurried without being sleepy. Energy: 0.30-0.55. Synonyms: mellow, laid-back, easy-going, breezy, casual, smooth. High acousticness often preferred. Associated genres: lofi, ambient, reggae, jazz. Good for studying, coffee shop, and relaxing.",
+      "tags": ["chill", "mellow", "laid back", "easy going", "smooth", "relaxed", "casual", "breezy", "vibing"]
+    },
+
+    {
+      "id": "mood_melancholic",
+      "type": "mood",
+      "title": "Melancholic / Sad / Blue Mood",
+      "content": "Melancholic music evokes sadness, longing, or introspection. Low valence (0.20-0.45). Energy: 0.20-0.45. Synonyms: sad, sorrowful, blue, gloomy, wistful, heartbroken, tearful, longing. Associated genres: folk, indie pop, classical, r&b. Associated activities: heartbreak, rainy days, emotional release.",
+      "tags": ["melancholic", "sad", "blue", "gloomy", "wistful", "heartbroken", "tearful", "longing", "sorrowful", "rainy", "down"]
+    },
+
+    {
+      "id": "mood_focused",
+      "type": "mood",
+      "title": "Focused / Concentrated Mood",
+      "content": "Focused music supports concentration and cognitive flow. Energy: 0.30-0.50. Often instrumental. Synonyms: concentrated, productive, alert, in-the-zone, studious. Associated genres: lofi, classical, ambient, jazz. Associated activities: studying, coding, deep work.",
+      "tags": ["focused", "concentration", "productive", "alert", "studious", "in the zone", "flow state", "work", "deep work"]
+    },
+
+    {
+      "id": "mood_intense",
+      "type": "mood",
+      "title": "Intense / Powerful Mood",
+      "content": "Intense music is forceful, aggressive, and emotionally overwhelming. High energy (0.80-1.00). Synonyms: powerful, fierce, aggressive, heavy, driving, hard, raw. Associated genres: rock, metal, edm. Associated activities: gym workouts, competition, emotional catharsis.",
+      "tags": ["intense", "powerful", "fierce", "aggressive", "heavy", "hard", "raw", "driving", "strong", "force", "hype"]
+    },
+
+    {
+      "id": "mood_peaceful",
+      "type": "mood",
+      "title": "Peaceful / Serene / Tranquil Mood",
+      "content": "Peaceful music creates a sense of calm and safety. Very low energy (0.10-0.35). Synonyms: serene, tranquil, calming, gentle, soothing, quiet. High acousticness. Associated genres: classical, ambient, folk. Associated activities: meditation, sleeping, unwinding.",
+      "tags": ["peaceful", "serene", "tranquil", "calm", "gentle", "soothing", "quiet", "still", "soft", "restful"]
+    },
+
+    {
+      "id": "mood_nostalgic",
+      "type": "mood",
+      "title": "Nostalgic / Wistful / Sentimental Mood",
+      "content": "Nostalgic music evokes memories of the past and a longing for earlier times. Medium energy (0.40-0.65). Synonyms: sentimental, wistful, reminiscent, retro, throwback, vintage. Associated genres: folk, country, indie pop, synthwave. Decade preferences often matter here.",
+      "tags": ["nostalgic", "sentimental", "wistful", "reminiscent", "retro", "throwback", "vintage", "memory", "past", "old school"]
+    },
+
+    {
+      "id": "combo_focus_lofi",
+      "type": "combination",
+      "title": "Focus + Lo-Fi Study Session",
+      "content": "The most popular studying combination: lofi hip-hop with focused or chill mood. Energy: 0.35-0.45. High acousticness. Moderate popularity (45-65). This is the defining use case for lofi music. Query synonyms: study beats, lo-fi hip hop, background music for studying, concentration music.",
+      "tags": ["lofi study", "focus beats", "study music", "background music", "concentration", "lo-fi hip hop"]
+    },
+
+    {
+      "id": "combo_workout_edm",
+      "type": "combination",
+      "title": "High-Intensity Workout + EDM",
+      "content": "The gym staple: EDM or metal with intense or energetic mood. Energy: 0.90-1.00. Very low acousticness. Very high tempo. Query synonyms: gym playlist, workout bangers, pump-up music, training music, pre-workout music, hype songs.",
+      "tags": ["gym playlist", "workout music", "pump up", "training", "high intensity", "pre-workout", "hype", "edm gym", "metal workout"]
+    },
+
+    {
+      "id": "combo_sad_acoustic",
+      "type": "combination",
+      "title": "Sad + Acoustic / Heartbreak Music",
+      "content": "Emotional listening after a breakup or on sad days: folk or indie pop with melancholic mood. Energy: 0.25-0.40. High acousticness. Low energy. Query synonyms: breakup songs, sad music, cry playlist, rainy day music, heartbreak songs, songs to cry to.",
+      "tags": ["breakup songs", "sad playlist", "cry music", "heartbreak", "rainy day playlist", "emotional music", "songs to cry to"]
+    },
+
+    {
+      "id": "combo_chill_jazz",
+      "type": "combination",
+      "title": "Chill Jazz / Coffee Shop Ambience",
+      "content": "Jazz or lofi with a relaxed or chill mood for cafe settings. Energy: 0.35-0.55. High acousticness. Moderate popularity. Query synonyms: coffee shop music, cafe jazz, background jazz, study cafe, work from home music, jazz coffee.",
+      "tags": ["coffee shop music", "cafe jazz", "background jazz", "work from home", "cafe ambiance", "smooth jazz", "afternoon music"]
+    }
+  ]
+}

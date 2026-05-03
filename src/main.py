@@ -6,11 +6,17 @@ Usage
   # Original rule-based demo (no API key needed):
   python -m src.main
 
-  # Natural language mode (requires GEMINI_API_KEY):
+  # Natural language mode -- few-shot Gemini parse (requires GEMINI_API_KEY):
   python -m src.main --nl "something chill for studying with acoustic vibes"
 
-  # Interactive natural language REPL:
+  # Full agentic pipeline -- RAG + few-shot + mode selection + retry:
+  python -m src.main --agent "upbeat pop for a party"
+
+  # Interactive REPL (agentic mode):
   python -m src.main --interactive
+
+  # Specialization comparison: zero-shot vs few-shot side-by-side:
+  python -m src.main --compare
 
   # Run the evaluation harness (offline, no API key needed):
   python -m src.main --evaluate
@@ -245,13 +251,63 @@ def _run_original_demo(songs: list) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Interactive REPL
+# Agent mode: single query through the full 7-step agentic pipeline
+# ---------------------------------------------------------------------------
+
+def _run_agent_query(query: str) -> None:
+    """Run a query through the VibefinderAgent and display results."""
+    from src.agent import VibefinderAgent
+    agent = VibefinderAgent(verbose=True)
+    result = agent.run(query)
+
+    if result["status"] == "blocked":
+        return
+
+    recs = result["recommendations"]
+    profile = result["profile"]
+    quality = result["quality"]
+    ms = max_possible_score()
+
+    if result.get("narrative"):
+        print(f"  AI says : {result['narrative']}")
+
+    _print_recommendations(
+        label=f'Agent: "{query}" [mode: {result["mode"]}]',
+        user_prefs=profile,
+        recs=recs,
+        max_score=ms,
+        mode=result["mode"],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Specialization comparison demo
+# ---------------------------------------------------------------------------
+
+_COMPARE_QUERIES = [
+    "I need something high energy for the gym",
+    "something sad for a rainy Sunday afternoon",
+    "good vibes",  # intentionally vague -- shows confidence difference clearly
+]
+
+def _run_compare() -> None:
+    """Show zero-shot vs few-shot specialization side-by-side."""
+    try:
+        from src.ai_agent import compare_zero_shot_vs_few_shot, _make_client
+        client = _make_client()
+        compare_zero_shot_vs_few_shot(_COMPARE_QUERIES, client)
+    except EnvironmentError as exc:
+        print(f"\n  [Error] {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Interactive REPL (uses agent pipeline)
 # ---------------------------------------------------------------------------
 
 def _run_interactive(songs: list) -> None:
     print()
-    print("VibeFinder 2.0 -- Natural Language Mode")
-    print("Describe the music you want in plain English. Type 'quit' to exit.")
+    print("VibeFinder 2.0 -- Interactive Agent Mode")
+    print("Describe the music you want. Type 'quit' to exit.")
     print()
     while True:
         try:
@@ -264,7 +320,7 @@ def _run_interactive(songs: list) -> None:
         if query.lower() in ("quit", "exit", "q"):
             print("Goodbye!")
             break
-        _run_nl_query(query, songs)
+        _run_agent_query(query)
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +343,15 @@ def main() -> None:
     )
     parser.add_argument(
         "--evaluate", action="store_true",
-        help="Run the offline evaluation harness and print a pass/fail report",
+        help="Run the offline evaluation harness (no API key needed)",
+    )
+    parser.add_argument(
+        "--agent", metavar="QUERY",
+        help='Full 7-step agentic pipeline with RAG + few-shot + retry',
+    )
+    parser.add_argument(
+        "--compare", action="store_true",
+        help="Show zero-shot vs few-shot specialization comparison (requires GEMINI_API_KEY)",
     )
     args = parser.parse_args()
 
@@ -297,6 +361,10 @@ def main() -> None:
     if args.evaluate:
         from src.evaluation import run_evaluation
         run_evaluation(songs)
+    elif args.agent:
+        _run_agent_query(args.agent)
+    elif args.compare:
+        _run_compare()
     elif args.nl:
         _run_nl_query(args.nl, songs)
     elif args.interactive:
