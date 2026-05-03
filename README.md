@@ -89,14 +89,14 @@ source .venv/bin/activate      # Mac / Linux
 pip install -r requirements.txt
 ```
 
-### 3. Set your Anthropic API key (required for AI features)
+### 3. Set your Gemini API key (required for AI features)
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...    # Mac / Linux
-set ANTHROPIC_API_KEY=sk-ant-...       # Windows CMD
+export GEMINI_API_KEY=AIza...    # Mac / Linux
+set GEMINI_API_KEY=AIza...       # Windows CMD
 ```
 
-The original rule-based demo and evaluation harness run without a key. Only `--nl` and `--interactive` modes require it.
+Get a free key at [Google AI Studio](https://aistudio.google.com/). The original rule-based demo and evaluation harness run without a key. Only `--nl` and `--interactive` modes require it.
 
 ---
 
@@ -255,7 +255,7 @@ Confidence on vague query           PASS    50%         3.52       fair
 
 ## Design Decisions
 
-**Why Claude Haiku?** The NL query parsing task is short, structured, and latency-sensitive. Haiku is fast and inexpensive for JSON extraction. The narrative generation is also brief (2-3 sentences) so Haiku's smaller context window is not a constraint.
+**Why Gemini 2.0 Flash?** The NL query parsing task is short, structured, and latency-sensitive. Gemini Flash is fast and inexpensive for JSON extraction. The narrative generation is also brief (2-3 sentences) so its context window is not a constraint.
 
 **Why two guardrail layers?** The safety guardrail runs before the API call to avoid wasting tokens on nonsense queries. The validation guardrail runs after Claude responds to catch hallucinated genre/mood labels before they reach the recommender -- for example, Claude might return "lofi-hop" which is not in the catalog.
 

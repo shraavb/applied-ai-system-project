@@ -53,7 +53,7 @@ The system answers: *"Given what this person said they want, which songs best ma
 | `popularity` | int 0-100 | 38 to 90 (simulated) |
 | `release_decade` | int | 2000, 2010, or 2020 |
 
-**Claude model:** `claude-haiku-4-5-20251001` for both NL parsing and narrative generation.
+**Gemini model:** `gemini-2.0-flash` for both NL parsing and narrative generation.
 
 ---
 

@@ -1,5 +1,5 @@
 """
-Claude-powered natural language query parser and recommendation narrator.
+Gemini-powered natural language query parser and recommendation narrator.
 
 This module is the core AI layer of VibeFinder 2.0. It does two things:
 1. parse_natural_query: converts a free-text music request into a structured
@@ -13,7 +13,8 @@ import logging
 import os
 from typing import Dict, List, Optional, Tuple
 
-import anthropic
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ Given a natural language music request, extract the user's preferences and retur
   "confidence":        float 0.0-1.0 (how confident you are in this extraction)
 
 Rules:
-- Return ONLY valid JSON, no markdown, no preamble.
+- Return ONLY valid JSON, no markdown, no preamble, no code fences.
 - If the request is ambiguous, set low confidence and null for unclear fields.
 - If the request mentions working out / gym / running, set energy >= 0.8.
 - If the request mentions studying / focus / concentration, set energy 0.3-0.5 and mood "focused" or "chill".
@@ -45,47 +46,61 @@ Rules:
 - Map "sad" to mood "melancholic", "upbeat" to mood "happy" or "energetic"."""
 
 
-def _make_client() -> anthropic.Anthropic:
-    """Return an Anthropic client. Raises if ANTHROPIC_API_KEY is not set."""
-    key = os.environ.get("ANTHROPIC_API_KEY", "")
+def _make_client() -> genai.Client:
+    """Return a Gemini client. Raises if GEMINI_API_KEY is not set."""
+    key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
         raise EnvironmentError(
-            "ANTHROPIC_API_KEY is not set. "
-            "Export it in your shell: export ANTHROPIC_API_KEY=sk-ant-..."
+            "GEMINI_API_KEY is not set. "
+            "Export it in your shell: export GEMINI_API_KEY=AIza..."
         )
-    return anthropic.Anthropic(api_key=key)
+    return genai.Client(api_key=key)
+
+
+def _strip_fences(text: str) -> str:
+    """Remove markdown code fences if Gemini wraps the JSON in them."""
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        # drop first line (```json or ```) and last line (```)
+        inner = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
+        text = "\n".join(inner).strip()
+    return text
 
 
 def parse_natural_query(
     query: str,
-    client: Optional[anthropic.Anthropic] = None,
+    client: Optional[genai.Client] = None,
 ) -> Tuple[Dict, str]:
     """Parse a free-text music request into a structured user profile dict.
 
     Returns (profile_dict, raw_json_string).
     The profile dict contains the fields the recommender expects, plus
-    a private '_confidence' key and '_raw_query' key for logging.
+    '_confidence' and '_raw_query' keys for logging/display.
     Falls back to a safe empty profile on any API or parse error.
     """
     if client is None:
         client = _make_client()
 
+    full_prompt = PARSE_SYSTEM_PROMPT + f"\n\nUser request: {query}"
     raw_json = ""
     try:
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=300,
-            system=PARSE_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": query}],
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=full_prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.1,        # low temperature for deterministic JSON
+                max_output_tokens=300,
+            ),
         )
-        raw_json = response.content[0].text.strip()
-        logger.debug("Claude raw parse response: %s", raw_json)
+        raw_json = _strip_fences(response.text)
+        logger.debug("Gemini raw parse response: %s", raw_json)
         parsed = json.loads(raw_json)
     except json.JSONDecodeError as exc:
-        logger.warning("Claude returned invalid JSON: %s | error: %s", raw_json, exc)
+        logger.warning("Gemini returned invalid JSON: %s | error: %s", raw_json, exc)
         parsed = {}
     except Exception as exc:
-        logger.error("Claude API error during query parsing: %s", exc)
+        logger.error("Gemini API error during query parsing: %s", exc)
         parsed = {}
 
     profile: Dict = {}
@@ -129,7 +144,7 @@ def parse_natural_query(
 def generate_recommendation_narrative(
     query: str,
     recommendations: List[Tuple[Dict, float, List[str]]],
-    client: Optional[anthropic.Anthropic] = None,
+    client: Optional[genai.Client] = None,
 ) -> str:
     """Generate a 2-3 sentence natural language explanation of the recommendations.
 
@@ -156,14 +171,17 @@ def generate_recommendation_narrative(
     )
 
     try:
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=200,
-            messages=[{"role": "user", "content": prompt}],
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.7,
+                max_output_tokens=200,
+            ),
         )
-        return response.content[0].text.strip()
+        return response.text.strip()
     except Exception as exc:
-        logger.error("Claude API error during narrative generation: %s", exc)
+        logger.error("Gemini API error during narrative generation: %s", exc)
         top = recommendations[0][0]
         return (
             f'Top match: "{top["title"]}" by {top["artist"]} '

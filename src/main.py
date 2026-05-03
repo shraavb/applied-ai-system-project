@@ -6,7 +6,7 @@ Usage
   # Original rule-based demo (no API key needed):
   python -m src.main
 
-  # Natural language mode (requires ANTHROPIC_API_KEY):
+  # Natural language mode (requires GEMINI_API_KEY):
   python -m src.main --nl "something chill for studying with acoustic vibes"
 
   # Interactive natural language REPL:
@@ -131,9 +131,8 @@ def _run_nl_query(query: str, songs: list, verbose: bool = True) -> None:
 
     # 2. Claude NL parsing
     try:
-        from src.ai_agent import parse_natural_query, generate_recommendation_narrative
-        import anthropic
-        client = anthropic.Anthropic()
+        from src.ai_agent import parse_natural_query, generate_recommendation_narrative, _make_client
+        client = _make_client()
         raw_profile, raw_json = parse_natural_query(query, client)
     except EnvironmentError as exc:
         print(f"\n  [Error] {exc}")
