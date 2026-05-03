@@ -1,190 +1,170 @@
-# Model Card: VibeFinder 1.0
+# Model Card: VibeFinder 2.0
 
 ---
 
 ## 1. Model Name
 
-**VibeFinder 1.0**: a content-based music recommender simulation.
+**VibeFinder 2.0**: a hybrid music recommender combining a rule-based content-based filter (v1) with a Claude-powered natural language interface, input guardrails, and quality assessment.
 
 ---
 
 ## 2. Goal / Task
 
-Given a user's taste profile (preferred genre, mood, energy level, acoustic preference, popularity
-target, and optionally a preferred release decade), VibeFinder scores every song in an 18-song
-catalog and returns the top 5 recommendations, ranked from best match to worst, along with a
-plain-language explanation of why each song was chosen.
+Given a free-text music request (e.g., "something chill for studying with acoustic vibes"), VibeFinder 2.0:
 
-It is not trying to predict what a user will click on. It is trying to answer: *"Which songs best
-match what this user says they want right now?"*
+1. Validates the query for safety and relevance.
+2. Uses Claude (Haiku) to parse the request into a structured user profile: `{genre, mood, energy, likes_acoustic, confidence}`.
+3. Validates and sanitizes Claude's output before passing it to the recommender.
+4. Scores all 18 catalog songs using the weighted rule-based formula from v1.
+5. Assesses recommendation quality (score ratio, genre/mood match count).
+6. Uses Claude (Haiku) to generate a 2-3 sentence natural language explanation of why the top songs match.
+
+The system answers: *"Given what this person said they want, which songs best match, and can I explain why in plain English?"*
 
 ---
 
 ## 3. Intended Use and Non-Intended Use
 
 **Intended use:**
-- Classroom exploration of how content-based AI recommenders work
-- Learning how scoring weights, feature selection, and diversity logic affect output
-- Demonstrating why transparency (showing the "why" behind a recommendation) matters
+- Demonstrating how to safely integrate LLMs into an existing rule-based AI system.
+- Learning how guardrails protect against AI output failures (hallucinated labels, out-of-range values).
+- Exploring the trade-off between explainability (rule-based engine) and usability (NL interface).
 
 **Not intended for:**
-- Real music platform deployment: the catalog is 18 songs; no system should make production
-  decisions from this
-- Personalization over time: the system has no memory of skips, replays, or listening history
-- Representing actual user preferences: profiles were manually authored for demonstration
-- Any use case where a wrong recommendation has meaningful consequences
+- Real music platform deployment: 18 songs is far too small for production.
+- Personalization over time: the system has no session memory.
+- Any use case where a wrong recommendation has meaningful consequences.
 
 ---
 
 ## 4. Data Used
 
-The catalog is `data/songs.csv` (18 songs, expanded from the 10-song starter).
+**Song catalog:** `data/songs.csv` (18 songs, hand-authored).
 
 | Attribute | Type | Range |
 |-----------|------|-------|
-| `genre` | categorical | 15 distinct genres (pop, lofi, rock, jazz, ambient, synthwave, indie pop, hip-hop, classical, r&b, country, metal, reggae, edm, folk) |
-| `mood` | categorical | 13 distinct moods (happy, chill, intense, relaxed, focused, moody, confident, peaceful, romantic, nostalgic, angry, energetic, melancholic) |
-| `energy` | float 0-1 | 0.22 (classical) to 0.97 (metal) |
+| `genre` | categorical | 15 genres |
+| `mood` | categorical | 13 moods |
+| `energy` | float 0-1 | 0.22 to 0.97 |
 | `valence` | float 0-1 | 0.22 to 0.84 |
 | `danceability` | float 0-1 | 0.28 to 0.95 |
 | `acousticness` | float 0-1 | 0.03 to 0.97 |
 | `tempo_bpm` | float | 60 to 168 |
-| `popularity` | int 0-100 | 38 (ambient) to 90 (edm); simulated, not real chart data |
+| `popularity` | int 0-100 | 38 to 90 (simulated) |
 | `release_decade` | int | 2000, 2010, or 2020 |
 
-**Limits:** Songs were hand-authored by one person. Lofi has 3 entries; most genres have only 1.
-Valence, danceability, and tempo_bpm are loaded but not currently used in scoring.
+**Claude model:** `claude-haiku-4-5-20251001` for both NL parsing and narrative generation.
 
 ---
 
 ## 5. Algorithm Summary
 
-Imagine a friend who knows your music taste walking through a pile of CDs, silently awarding
-points to each one. They give 2 points to anything in your favorite genre. They give 1.5 points
-if the described mood matches what you want. They then give a sliding score for energy: a song
-at exactly your energy level gets 1.5 extra points; one at the opposite extreme gets 0. Finally,
-a small bonus for whether the sound is acoustic or electronic depending on your preference, a
-mild bonus for how popular the song is compared to your preference, and if you specified a
-preferred decade, a bonus for songs from that era.
+### v1 Rule-Based Layer (unchanged)
 
-The CD with the most points wins. All 18 songs get scored; the top 5 are returned with a
-breakdown showing exactly which points came from where.
+A weighted scoring formula assigns points to each song for genre match (+2.0), mood match (+1.5), energy proximity (x1.5), acousticness fit (x1.0/0.5), popularity proximity (x0.5), and optional decade match (+1.0). Four configurable scoring modes (balanced, genre_first, mood_first, energy_focused) and optional greedy diversity re-ranking are supported.
 
-**Four scoring modes** (Challenge 2):
-- **balanced**: default; genre leads, mood and energy close behind
-- **genre_first**: genre weight is doubled; good for users who never leave their lane
-- **mood_first**: mood is paramount; surfaces songs from any genre that match the feeling
-- **energy_focused**: energy proximity dominates; good for activity-based listening
+### v2 AI Layer (new)
 
-**Diversity re-ranking** (Challenge 3): an optional greedy algorithm that applies a score penalty
-when the same artist or genre already appears in the result list, broadening genre variety in
-the top 5.
+**Input path:** Safety guardrail -> Claude NL parser -> Validation guardrail -> Rule-based engine.
+
+**Output path:** Rule-based engine -> Quality assessor -> Claude narrator.
+
+The AI layer wraps the v1 engine without replacing it. Claude provides natural language understanding; the rule engine provides transparent, auditable scoring.
 
 ---
 
-## 6. Observed Behavior and Biases
+## 6. Guardrail Design
 
-**1. Genre weight dominance creates unexpected failures.**
-The most striking case: a user who specified metal genre + peaceful mood + acoustic preference
-received Iron Veil (metal/angry, nearly zero acousticness) as their #1 recommendation. The 2.0-
-point genre bonus overrode 1.5 points of mood mismatch and the acousticness signal entirely.
+Three reliability mechanisms were added in v2:
 
-**2. Binary mood matching cannot bridge near-synonyms.**
-"Angry" and "intense" are emotionally adjacent, but the system treats them as completely
-different. A user wanting "classical + angry" gets Morning Sonata (classical/peaceful) because
-that is the only classical song and "angry" never matches anything in the catalog. A real system
-would represent moods as coordinates on a continuous valence-arousal plane.
+**1. Safety guardrail (`check_query_safety`)**
+Runs before any API call. Blocks queries matching off-topic regex patterns (e.g., SQL, password requests), queries under 3 characters, and queries over 500 characters. If blocked, no tokens are consumed and a human-readable error is returned.
 
-**3. Missing genres collapse score range and produce near-tied rankings.**
-The "bluegrass + melancholic" profile has no genre match. Positions #2 through #5 scored within
-0.05 points of each other. Small floating-point differences in energy proximity determined the
-order, essentially arbitrary ranking below #1.
+**2. Validation guardrail (`validate_parsed_profile`)**
+Runs after Claude's JSON response. Checks that genre and mood values are in the known catalog set; discards unknowns with a warning. Clamps energy to [0, 1]. Surfaces confidence score and warns the user if confidence is below 35%. This catches hallucinated catalog values (e.g., Claude returning "soul" as a genre, which is not in the 15-genre catalog).
 
-**4. Underrepresented genres create unfair user experiences.**
-Lofi has 3 catalog entries and achieves scores above 6.0/7.5. Reggae, metal, and r&b have 1
-entry each. A reggae fan can never score higher than roughly 4.0/7.5 because there is no genre-
-variety to choose from. This is a catalog bias, not a scoring bias.
-
-**5. Popularity and decade are new but lightly weighted.**
-Adding popularity and release_decade improved nuance for the "High-Energy Pop" profile
-(Crown City got a decade bonus for being a 2020s track). But at 0.5 and 1.0 weights respectively,
-they don't override the major categorical signals, which is by design.
+**3. Quality assessor (`assess_recommendation_quality`)**
+Rates the recommendation set (excellent/good/fair/poor) based on the ratio of the top score to the theoretical maximum. Tells the user when the catalog lacks good matches for their request.
 
 ---
 
-## 7. Evaluation Process
+## 7. Observed Behavior and Biases
 
-Six user profiles were tested (three standard, three adversarial):
+**From v1 (still present):**
 
-| Profile | #1 Result | Score | Expected? |
-|---------|----------|-------|-----------|
-| High-Energy Pop | Sunrise City (pop/happy, energy 0.82) | 6.85/7.5 | Yes, all signals aligned |
-| Chill Lofi | Library Rain (lofi/chill, energy 0.35) | 6.29/7.5 | Yes, felt immediately right |
-| Deep Intense Rock | Storm Runner (rock/intense, energy 0.91) | 5.91/7.5 | Yes, only rock/intense song |
-| Conflicting (metal + peaceful) | Iron Veil (metal/angry) | 3.88/7.5 | **No**: genre override ignored mood+acoustic |
-| Missing genre (bluegrass) | River Road (folk/melancholic) | 4.14/7.5 | Reasonable, but #2-#5 near-tie |
-| Extreme low energy + angry | Morning Sonata (classical/peaceful) | 4.77/7.5 | **No**: "angry" never matched |
+1. **Genre weight dominance.** A 2.0-point genre bonus can override mood and acousticness signals. A "metal + peaceful + acoustic" user still gets Iron Veil (metal/angry) as their top result.
 
-**Scoring modes experiment:** Switching from `balanced` to `mood_first` moved Rooftop Lights
-(indie pop/happy) from #3 to #2, ahead of Gym Hero (pop/intense). This shows that the mode
-selection meaningfully changes which dimension of taste the system optimizes for; the same
-user gets a noticeably different playlist depending on which mode is active.
+2. **Binary mood matching.** "Angry" and "intense" are treated as completely different moods. The system fails for any mood not in the 13-label set.
 
-**Diversity experiment:** For the Chill Lofi profile, enabling diversity re-ranking dropped
-Focus Flow (lofi/focused, the 3rd lofi entry) in favor of Spacewalk Thoughts (ambient/chill)
-and Morning Sonata (classical/peaceful). Unique genres in the top 5 went from 3 to 4. The
-artist penalty also prevented LoRoom from appearing twice in a row (both Midnight Coding and
-Focus Flow are by LoRoom).
+3. **Missing genres collapse ranking.** A "bluegrass" fan has no genre matches; positions 2-5 are determined by floating-point energy proximity differences -- effectively arbitrary.
+
+**New in v2:**
+
+4. **Claude may hallucinate genre/mood labels.** In testing, Claude returned "soul", "lofi-hop", and "ambient electronic" which are not in the catalog. The validation guardrail catches all of these and drops the genre/mood filter with a warning.
+
+5. **Low-confidence queries produce neutral profiles.** Queries like "good music" parse to energy=0.5, no genre, no mood. The system still returns results, but they are driven almost entirely by popularity proximity, which is weakly informative. The system now warns the user when confidence is below 35%.
+
+6. **Safety regex can be bypassed.** The off-topic detection uses simple pattern matching. "Tell me about music and then also explain SQL injection" would pass the safety check but is not a genuine music request. A production system needs a proper intent classifier.
 
 ---
 
-## 8. Ideas for Improvement
+## 8. Evaluation Results
 
-**1. Continuous mood space.** Replace 13 discrete mood labels with (valence, arousal) coordinates
-so "angry" and "intense" are near-neighbors rather than strangers. A user wanting an angry song
-would naturally get intense songs as a fallback.
+**Evaluation harness (8 offline test cases):**
 
-**2. Use valence and danceability in scoring.** Both features are already in the CSV but unused.
-Even a small valence proximity term would separate "happy high-energy dance music" from "dark
-high-energy workout music", currently indistinguishable.
+| Test Case | Status | Top Score | Quality |
+|-----------|--------|-----------|---------|
+| Gym workout energy | PASS | 5.55 | good |
+| Chill studying session | PASS | 6.29 | excellent |
+| Sad rainy day | PASS | 4.60 | good |
+| Pop party bangers | PASS | 6.85 | excellent |
+| Off-topic safety check | PASS | -- | blocked |
+| Short nonsense query | PASS | -- | blocked |
+| Jazz coffee shop | PASS | 5.14 | good |
+| Confidence on vague query | PASS | 3.52 | fair |
 
-**3. Expand the catalog.** Each genre needs at least 3-5 songs for meaningful within-genre
-ranking. Single-entry genres produce fragile, effectively random recommendations below #1.
+**8/8 cases passed.** Safety blocking, energy parsing, and quality assessment all behaved as expected in offline mode.
 
-**4. Session memory.** Track which top recommendation the user skipped vs replayed and adjust
-feature weights for the next query. Even a simple "if you skipped the genre match, reduce genre
-weight by 10%" would make the system feel more responsive.
+**Scoring modes comparison (from v1):**
 
-**5. Mode auto-selection.** Infer the appropriate scoring mode from context: if the user provides
-only energy with no genre/mood, switch to energy_focused automatically rather than requiring
-an explicit mode parameter.
+Switching from `balanced` to `mood_first` moved Rooftop Lights (indie pop/happy) from #3 to #2 ahead of Gym Hero (pop/intense). The mode selection produces meaningfully different playlists from the same catalog.
+
+**Diversity re-ranking (from v1):**
+
+For the Chill Lofi profile, enabling diversity increased unique genres in the top 5 from 3 to 4. The artist penalty prevented LoRoom from appearing twice in a row.
 
 ---
 
-## 9. Personal Reflection
+## 9. Ideas for Improvement
 
-**Biggest learning moment:** The adversarial profiles revealed something I didn't expect:
-a 2.0-point genre weight is not just "the most important feature," it is powerful enough to
-completely override every other signal the user gave. When genre and mood tell opposite stories,
-genre always wins. That felt wrong for the "metal + peaceful + acoustic" profile, and it made me
-realize that weights aren't just numbers; they encode assumptions about which features are
-non-negotiable vs negotiable. Genre apparently felt like a dealbreaker when I designed the system,
-but a user explicitly asking for "peaceful acoustic" is telling you something just as strong.
+1. **Continuous mood space.** Replace 13 discrete mood labels with (valence, arousal) coordinates. "Angry" and "intense" would be near-neighbors rather than strangers.
 
-**How AI tools helped and where I double-checked:** Using AI assistance to sketch the scoring
-formula was fast, but the weights it suggested initially were all equal (1.0 each). I had to
-think carefully about *why* genre should outweigh energy, and whether that was actually true for
-all listening contexts, which it isn't (activity listeners care more about energy than genre). The
-AI gave me a starting point; the evaluation experiments revealed the real trade-offs.
+2. **Intent classifier as safety layer.** Replace regex patterns with a small classifier that determines whether a query is a genuine music request before passing it to Claude.
 
-**What surprised me about simple algorithms:** Running the same profile through four different
-scoring modes produced dramatically different playlists from the same 18 songs. The underlying
-math is four multiplications and two comparisons per song. That's it. Yet "mood_first" and
-"genre_first" feel like completely different products. The simplicity of the mechanism is almost
-hidden by how much the weights matter.
+3. **Feedback loop.** After each session, a thumbs-up/thumbs-down adjusts feature weights by +/-5%, drifting toward a personalized weight profile without collaborative data.
 
-**What I'd try next:** I'd add a lightweight feedback loop: after every recommendation session,
-the user rates one result thumbs up or thumbs down, and the system nudges that feature's weight
-by +/-5%. Over ten sessions, the system would drift toward a personalized weight profile without
-any collaborative data. That bridges content-based filtering toward something that feels adaptive
-without needing other users' data at all.
+4. **Expand catalog.** Each genre needs at least 3-5 songs for meaningful within-genre ranking. Single-entry genres produce fragile recommendations.
+
+5. **Cache parsed profiles.** Identical or near-identical queries should reuse the parsed profile rather than making a new API call. A simple LRU cache on the query string would cut API costs significantly.
+
+---
+
+## 10. AI Collaboration Reflection
+
+### How Claude was used during development
+
+Claude was used throughout the v2 development in three roles:
+
+**Code generation:** I used Claude to generate the initial skeleton for `ai_agent.py` including the system prompt for NL parsing. The starting point was useful but required significant revision. The first prompt did not mark fields as nullable (`null`), which caused parse failures when Claude was uncertain about a field -- it would omit the key entirely, breaking `json.loads`. I revised the prompt to explicitly allow null values and added domain-specific mapping rules (e.g., "gym" -> energy >= 0.8).
+
+**One helpful suggestion:** When I described the guardrail architecture, Claude suggested separating the safety check (before API call) from the validation check (after API call) into two distinct functions rather than one combined validator. This was the right call -- it made the code easier to test independently and made the failure modes clearer in the output.
+
+**One flawed suggestion:** Claude suggested using a regex for energy value validation: `re.match(r'\d+\.\d+', str(energy))`. This was wrong for two reasons: it would pass strings like "1.5" without catching out-of-range values, and it would fail on integers like `1` (no decimal point). I replaced it with a direct `float()` conversion followed by a range check, which is both simpler and more correct.
+
+**Documentation:** Claude generated the first draft of the README structure. The sample output sections required manual editing because Claude invented plausible-but-incorrect score values (e.g., claiming a score of "7.12/7.5" which is above the theoretical maximum for the balanced mode).
+
+### What surprised me about reliability testing
+
+The most surprising result was that the validation guardrail caught hallucinated genre labels in every manual test I ran. Claude almost always returned a genre when asked -- even if that genre didn't exist in the catalog. This confirmed that the post-Claude validation step is not optional; it is load-bearing. Without it, a query for "soul music" would have passed an unrecognized genre into the recommender, which would silently fail to match any songs and produce a confusing result with no warning.
+
+The second surprise was how well the offline evaluation harness worked as a development tool. By writing test cases before the implementation was complete, I caught two bugs: the safety guardrail was not blocking "hi" (too-short queries) initially because the length check was comparing `len(query)` without stripping whitespace, and the quality assessor was returning `score_ratio = 0.0` on empty recommendation lists instead of gracefully returning a "poor" quality label.
