@@ -8,7 +8,7 @@
 
 ## Demo Walkthrough
 
-**Loom video:** [ADD YOUR LOOM LINK HERE]
+**Loom video:** https://drive.google.com/file/d/1ZBG7drO23JlicFqw7neUo739kp-qnYfx/view?usp=sharing
 
 The walkthrough demonstrates: end-to-end agent pipeline (2-3 queries), RAG retrieval steps, guardrail blocking, and the evaluation harness output.
 
