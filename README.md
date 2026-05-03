@@ -8,7 +8,7 @@
 
 ## Demo Walkthrough
 
-**Loom video:** https://drive.google.com/file/d/1ZBG7drO23JlicFqw7neUo739kp-qnYfx/view?usp=sharing
+**Video:** https://drive.google.com/file/d/1ZBG7drO23JlicFqw7neUo739kp-qnYfx/view?usp=sharing
 
 The walkthrough demonstrates: end-to-end agent pipeline (2-3 queries), RAG retrieval steps, guardrail blocking, and the evaluation harness output.
 
@@ -40,39 +40,42 @@ VibeFinder 2.0 extends the Module 3 recommender with four AI integration layers:
 
 ## System Architecture
 
-Full component diagram is embedded below. A text version is also in [assets/architecture.md](assets/architecture.md).
+```mermaid
+flowchart TD
+    A([User text query]) --> B
 
-```
-User text query
-      |
-      v
-[Step 1: Safety Guardrail] --blocked--> "Request blocked" message
-      | safe
-      v
-[Step 2: RAG Retrieval]  knowledge_base.json (37 docs)
-  Gemini text-embedding-004 embeds query + docs -> cosine similarity
-  -> top-3 relevant docs (e.g., "Gym/Workout" | "EDM Genre" | "Workout+EDM combo")
-      |  context text
-      v
-[Step 3: Gemini Parse] few-shot specialized prompt + retrieved context
-  -> {genre, mood, energy, likes_acoustic, confidence}
-      |
-      v
-[Step 4: Validation Guardrail] enforce known values, clamp ranges, surface warnings
-      |  clean profile
-      v
-[Step 5: Agent Mode Selection] analyze profile + query -> pick scoring mode
-  energy_focused | mood_first | genre_first | balanced
-      |  mode
-      v
-[Step 6: Rule-Based Recommender] score 18 songs -> ranked list
-  [Retry if quality == poor: switch to balanced + diversity re-ranking]
-      |
-      v
-[Step 7: Gemini Narrator] 2-3 sentence plain-English explanation
-      |
-      v
-Formatted table: Title | Genre/Mood | Score | Bar | Key Reasons
+    B["Step 1: Safety Guardrail\ncheck_query_safety()"]
+    B -->|blocked| C([Request blocked message])
+    B -->|safe| D
+
+    D["Step 2: RAG Retrieval\n37-doc knowledge base\nGemini text-embedding-004\ncosine similarity"]
+    D -->|top-3 docs + context| E
+
+    E["Step 3: Gemini Parse\nfew-shot specialized prompt\n+ RAG context\n→ {genre, mood, energy,\n   likes_acoustic, confidence}"]
+    E --> F
+
+    F["Step 4: Validation Guardrail\nvalidate_parsed_profile()\nenforce known values\nclamp energy to [0,1]"]
+    F -->|clean profile + warnings| G
+
+    G["Step 5: Agent Mode Selection\n_select_mode()\nenergy_focused / mood_first\ngenre_first / balanced"]
+    G -->|mode| H
+
+    H["Step 6: Rule-Based Recommender\nscore_song() × 18 songs\nrecommend_songs(mode)"]
+    H -->|poor quality| G
+    H -->|ranked top-5| I
+
+    I["Step 7: Gemini Narrator\ngenerate_recommendation_narrative()\n2-3 sentence explanation"]
+    I --> J([Formatted results table\nTitle · Genre/Mood · Score · Reasons])
+
+    style C fill:#f87171,color:#fff
+    style J fill:#4ade80,color:#000
+    style B fill:#fbbf24,color:#000
+    style F fill:#fbbf24,color:#000
+    style D fill:#60a5fa,color:#000
+    style E fill:#60a5fa,color:#000
+    style G fill:#a78bfa,color:#000
+    style H fill:#a78bfa,color:#000
+    style I fill:#60a5fa,color:#000
 ```
 
 **Key components:**
