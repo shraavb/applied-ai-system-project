@@ -14,3 +14,4 @@ venv/
 # Pytest cache
 .pytest_cache/
 data/embeddings_cache.json
+.env
