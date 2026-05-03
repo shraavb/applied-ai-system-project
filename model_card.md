@@ -97,7 +97,7 @@ Rates the recommendation set (excellent/good/fair/poor) based on the ratio of th
 
 2. **Binary mood matching.** "Angry" and "intense" are treated as completely different moods. The system fails for any mood not in the 13-label set.
 
-3. **Missing genres collapse ranking.** A "bluegrass" fan has no genre matches; positions 2-5 are determined by floating-point energy proximity differences -- effectively arbitrary.
+3. **Missing genres collapse ranking.** A "bluegrass" fan has no genre matches; positions 2-5 are determined by floating-point energy proximity differences: effectively arbitrary.
 
 **New in v2:**
 
@@ -128,13 +128,13 @@ Rates the recommendation set (excellent/good/fair/poor) based on the ratio of th
 | Test Case | Status | Top Score | Quality |
 |-----------|--------|-----------|---------|
 | Gym workout energy | PASS | 3.75 | fair |
-| Chill studying -- acoustic | PASS | 4.25 | good |
-| Sad rainy day -- melancholic | PASS | 3.44 | fair |
+| Chill studying: acoustic | PASS | 4.25 | good |
+| Sad rainy day: melancholic | PASS | 3.44 | fair |
 | Pop party bangers | PASS | 5.87 | excellent |
-| Off-topic query -- safety block | PASS | -- | blocked |
-| Too-short query -- safety block | PASS | -- | blocked |
+| Off-topic query: safety block | PASS |: | blocked |
+| Too-short query: safety block | PASS |: | blocked |
 | Jazz coffee shop | PASS | 3.98 | fair |
-| Vague query -- low confidence | PASS | 2.11 | poor |
+| Vague query: low confidence | PASS | 2.11 | poor |
 | RAG: gym retrieves gym doc | PASS | n/a | retrieval |
 | RAG: study retrieves study doc | PASS | n/a | retrieval |
 | RAG: sad retrieves sad doc | PASS | n/a | retrieval |
@@ -176,17 +176,17 @@ For the Chill Lofi profile, enabling diversity increased unique genres in the to
 
 **Claude Code** (Anthropic's CLI assistant) was used as a development tool throughout v2. **Gemini 2.0 Flash** (`gemini-2.0-flash`) is the production model that runs inside the system at query time. These are two different things.
 
-**Code generation:** Claude Code generated the initial skeleton for `ai_agent.py` including the system prompt for NL parsing. The starting point was useful but required significant revision. The first prompt did not mark fields as nullable (`null`), which caused parse failures when Gemini was uncertain about a field -- it would omit the key entirely, breaking `json.loads`. I revised the prompt to explicitly allow null values and added domain-specific mapping rules (e.g., "gym" -> energy >= 0.8).
+**Code generation:** Claude Code generated the initial skeleton for `ai_agent.py` including the system prompt for NL parsing. The starting point was useful but required significant revision. The first prompt did not mark fields as nullable (`null`), which caused parse failures when Gemini was uncertain about a field: it would omit the key entirely, breaking `json.loads`. I revised the prompt to explicitly allow null values and added domain-specific mapping rules (e.g., "gym" -> energy >= 0.8).
 
-**One helpful suggestion:** When I described the guardrail architecture, Claude Code suggested separating the safety check (before API call) from the validation check (after API call) into two distinct functions rather than one combined validator. This was the right call -- it made the code easier to test independently and made the failure modes clearer in the output.
+**One helpful suggestion:** When I described the guardrail architecture, Claude Code suggested separating the safety check (before API call) from the validation check (after API call) into two distinct functions rather than one combined validator. This was the right call: it made the code easier to test independently and made the failure modes clearer in the output.
 
-**One flawed suggestion:** A suggested regex for energy value validation -- `re.match(r'\d+\.\d+', str(energy))` -- was wrong for two reasons: it would pass strings like "1.5" without catching out-of-range values, and it would fail on integers like `1` (no decimal point). I replaced it with a direct `float()` conversion followed by a range check, which is both simpler and more correct.
+**One flawed suggestion:** A suggested regex for energy value validation: `re.match(r'\d+\.\d+', str(energy))`: was wrong for two reasons: it would pass strings like "1.5" without catching out-of-range values, and it would fail on integers like `1` (no decimal point). I replaced it with a direct `float()` conversion followed by a range check, which is both simpler and more correct.
 
 **Documentation:** Claude Code generated the first draft of the README structure. The sample output sections required manual editing because the AI invented plausible-but-incorrect score values (e.g., claiming a score of "7.12/7.5" which is above the theoretical maximum for the balanced mode).
 
 ### What surprised me about reliability testing
 
-The most surprising result was that the validation guardrail caught hallucinated genre labels in every manual test I ran. Gemini almost always returned a genre when asked -- even if that genre didn't exist in the catalog. This confirmed that the post-Gemini validation step is not optional; it is load-bearing. Without it, a query for "soul music" would have passed an unrecognized genre into the recommender, which would silently fail to match any songs and produce a confusing result with no warning.
+The most surprising result was that the validation guardrail caught hallucinated genre labels in every manual test I ran. Gemini almost always returned a genre when asked: even if that genre didn't exist in the catalog. This confirmed that the post-Gemini validation step is not optional; it is load-bearing. Without it, a query for "soul music" would have passed an unrecognized genre into the recommender, which would silently fail to match any songs and produce a confusing result with no warning.
 
 The second surprise was how well the offline evaluation harness worked as a development tool. By writing test cases before the implementation was complete, I caught two bugs: the safety guardrail was not blocking "hi" (too-short queries) initially because the length check was comparing `len(query)` without stripping whitespace, and the quality assessor was returning `score_ratio = 0.0` on empty recommendation lists instead of gracefully returning a "poor" quality label.
 
