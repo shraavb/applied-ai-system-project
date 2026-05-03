@@ -2,7 +2,15 @@
 
 **Base project:** Music Recommender (Module 3)
 
-**Extension:** Natural language query interface powered by Claude, plus input validation guardrails, quality scoring, and a structured evaluation harness.
+**Extension:** Natural language query interface powered by Gemini 2.0 Flash, RAG knowledge base, 7-step agentic workflow, few-shot specialization, input/output guardrails, quality scoring, and a comprehensive test suite (184 pytest + 16/16 evaluation harness).
+
+---
+
+## Demo Walkthrough
+
+**Loom video:** [ADD YOUR LOOM LINK HERE]
+
+The walkthrough demonstrates: end-to-end agent pipeline (2-3 queries), RAG retrieval steps, guardrail blocking, and the evaluation harness output.
 
 ---
 
@@ -32,7 +40,7 @@ VibeFinder 2.0 extends the Module 3 recommender with four AI integration layers:
 
 ## System Architecture
 
-See [assets/architecture.md](assets/architecture.md) for the full component diagram.
+Full component diagram is embedded below. A text version is also in [assets/architecture.md](assets/architecture.md).
 
 ```
 User text query
@@ -321,11 +329,18 @@ python -m src.main --evaluate
 
 ## Testing Summary
 
-- **16/16 evaluation harness cases pass** in offline mode (8 core pipeline, 5 RAG retrieval, 3 agent mode selection).
-- **2 tests verify safety blocking** (off-topic + too-short queries rejected before any API call).
-- **5 RAG tests verify retrieval accuracy** (gym query must retrieve gym doc, etc.) using keyword matching.
-- **3 agent tests verify mode selection logic** (gym->energy_focused, sad->mood_first, explicit genre->genre_first).
-- **2 existing pytest unit tests** verify the OOP recommender interface.
+- **184/184 pytest tests pass** across 6 test files (run `pytest` with no arguments).
+- **16/16 evaluation harness cases pass** in offline mode (run `python -m src.main --evaluate`).
+
+| Test File | Tests | What It Covers |
+|-----------|-------|---------------|
+| `tests/test_recommender_extended.py` | 39 | Song loading, scoring formula, all 4 modes, OOP API |
+| `tests/test_guardrails.py` | 42 | Safety blocking, profile validation, quality assessment |
+| `tests/test_rag.py` | 29 | Cosine similarity, KB loading, keyword retrieval, context formatting |
+| `tests/test_agent.py` | 26 | Mode selection logic, full offline pipeline (16 end-to-end runs) |
+| `tests/test_ai_agent.py` | 26 | JSON fence stripping, profile extraction (all edge cases) |
+| `tests/test_integration.py` | 20 | Cross-component: RAG + agent + guardrails wired together |
+| `tests/test_recommender.py` | 2 | Original OOP interface (unchanged from v1) |
 
 **What worked:** RAG retrieval was accurate in both semantic and keyword modes. The few-shot specialization produced measurably higher confidence on activity-based queries. The agent's mode selection decision correctly identified energy_focused for gym queries and mood_first for emotional queries in all offline tests.
 
@@ -335,13 +350,13 @@ python -m src.main --evaluate
 
 ## How AI Was Used in Development
 
-Claude was used in three ways during development:
+Claude Code (Anthropic's CLI) was used as a development assistant. Gemini 2.0 Flash (`gemini-2.0-flash`) is the production model that runs inside the system.
 
-1. **Code generation starting point:** I used Claude to generate the initial structure of `ai_agent.py` and the system prompt for NL parsing. The first system prompt it suggested treated all JSON fields as required, which caused parse failures on short queries. I revised the prompt to mark all fields nullable and add explicit energy mapping rules (e.g., "gym" -> energy >= 0.8).
+1. **Code generation starting point:** Claude Code generated the initial structure of `ai_agent.py` and the system prompt for NL parsing. The first prompt treated all JSON fields as required, causing parse failures on short queries. I revised it to mark all fields nullable and added domain-specific mapping rules (e.g., "gym" -> energy >= 0.8).
 
-2. **Debugging:** When testing the validation guardrail, Claude suggested using a regex for energy validation. That was flawed -- `re.match(r'\d+\.\d+', str(energy))` would pass strings like "1.5" without catching out-of-range values. I replaced it with a direct `float()` conversion and range check.
+2. **Debugging:** During guardrail development, a suggested regex for energy validation -- `re.match(r'\d+\.\d+', str(energy))` -- would pass out-of-range strings like "1.5" and fail on plain integers. I replaced it with a direct `float()` conversion and explicit range check.
 
-3. **Documentation drafting:** Claude generated the first draft of this README structure. The sample output sections required manual editing because Claude invented plausible-but-wrong score values.
+3. **Documentation drafting:** Claude Code generated the first draft of this README structure. The sample output sections required manual editing because the AI invented plausible-but-wrong score values (e.g., a score above the theoretical maximum).
 
 ---
 
@@ -349,12 +364,12 @@ Claude was used in three ways during development:
 
 **Limitations:**
 - The 18-song catalog is too small for real-world use. Most genres have only 1 entry, meaning a "reggae fan" can never get more than one genre match.
-- Claude's NL parser occasionally conflates genres not in the catalog (e.g., "R&B soul" -> "soul" which is not a known genre). The validation guardrail catches this but drops the genre filter, potentially reducing result quality.
+- Gemini's NL parser occasionally conflates genres not in the catalog (e.g., "R&B soul" -> "soul" which is not a known genre). The validation guardrail catches this but drops the genre filter, potentially reducing result quality.
 - The system has no memory -- the same query always returns the same result regardless of what the user skipped or loved before.
 
 **Could it be misused?**
 - The safety guardrail prevents using the NL interface for non-music tasks, but it relies on regex patterns which can be bypassed with creative phrasing. A production system would need a proper intent classifier.
-- The rule-based recommender has no opinion-forming capability, so it cannot generate harmful recommendations -- but the Claude narrator could theoretically be prompted to produce inappropriate commentary if the query bypasses the safety filter.
+- The rule-based recommender has no opinion-forming capability, so it cannot generate harmful recommendations -- but the Gemini narrator could theoretically be prompted to produce inappropriate commentary if the query bypasses the safety filter.
 
 **Future improvements:**
 - Expand catalog to 100+ songs per genre for meaningful diversity.
@@ -377,13 +392,19 @@ applied-ai-system-project/
 │   ├── agent.py          # NEW: 7-step agentic workflow orchestrator
 │   └── evaluation.py     # Evaluation harness (16 cases: core + RAG + agent)
 ├── tests/
-│   └── test_recommender.py
+│   ├── test_recommender.py          # Original OOP interface (v1)
+│   ├── test_recommender_extended.py # 39 tests: scoring, modes, diversity
+│   ├── test_guardrails.py           # 42 tests: safety, validation, quality
+│   ├── test_rag.py                  # 29 tests: cosine sim, retrieval, KB
+│   ├── test_agent.py                # 26 tests: mode selection, offline pipeline
+│   ├── test_ai_agent.py             # 26 tests: profile extraction, fence stripping
+│   └── test_integration.py         # 20 tests: end-to-end cross-component
 ├── data/
 │   ├── songs.csv              # 18-song catalog
-│   ├── knowledge_base.json    # NEW: 37 RAG documents (genres, activities, moods)
+│   ├── knowledge_base.json    # 37 RAG documents (genres, activities, moods)
 │   └── embeddings_cache.json  # Auto-generated on first --agent run (gitignored)
 ├── assets/
-│   └── architecture.md   # Full system architecture diagram
+│   └── architecture.md        # System architecture component diagram
 ├── model_card.md
 ├── requirements.txt
 └── README.md
@@ -393,4 +414,4 @@ applied-ai-system-project/
 
 ## Portfolio Reflection
 
-This project taught me that adding AI to an existing system is not just about the model -- it is about the infrastructure around the model. The rule-based recommender from Module 3 was already functional, but without input guardrails, the AI layer introduced new failure modes (hallucinated genre labels, ambiguous queries, off-topic requests) that the original system never had to handle. Building the two-layer guardrail system -- one before the AI call and one after -- was the most valuable engineering decision in this version. It made the system more trustworthy and made the AI's role more legible: Claude handles natural language understanding, the rule engine handles explainable ranking, and the guardrails make the handoff between them safe.
+This project taught me that adding AI to an existing system is not just about the model -- it is about the infrastructure around the model. The rule-based recommender from Module 3 was already functional, but without input guardrails, the AI layer introduced new failure modes (hallucinated genre labels, ambiguous queries, off-topic requests) that the original system never had to handle. Building the two-layer guardrail system -- one before the AI call and one after -- was the most valuable engineering decision in this version. It made the system more trustworthy and made the AI's role more legible: Gemini handles natural language understanding, the rule engine handles explainable ranking, and the guardrails make the handoff between them safe. Writing 184 tests before declaring the system complete also changed how I work: I caught two real bugs through test failures that manual inspection would have missed. That process -- build, test, find the gap, fix -- is what I think distinguishes an AI engineer from someone who just prompts a model.

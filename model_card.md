@@ -4,7 +4,7 @@
 
 ## 1. Model Name
 
-**VibeFinder 2.0**: a hybrid music recommender combining a rule-based content-based filter (v1) with a Claude-powered natural language interface, input guardrails, and quality assessment.
+**VibeFinder 2.0**: a hybrid music recommender combining a rule-based content-based filter (v1) with a Gemini 2.0 Flash-powered natural language interface, RAG knowledge retrieval, 7-step agentic workflow, input/output guardrails, and quality assessment.
 
 ---
 
@@ -13,11 +13,12 @@
 Given a free-text music request (e.g., "something chill for studying with acoustic vibes"), VibeFinder 2.0:
 
 1. Validates the query for safety and relevance.
-2. Uses Claude (Haiku) to parse the request into a structured user profile: `{genre, mood, energy, likes_acoustic, confidence}`.
-3. Validates and sanitizes Claude's output before passing it to the recommender.
-4. Scores all 18 catalog songs using the weighted rule-based formula from v1.
-5. Assesses recommendation quality (score ratio, genre/mood match count).
-6. Uses Claude (Haiku) to generate a 2-3 sentence natural language explanation of why the top songs match.
+2. Retrieves the top-3 relevant documents from a 37-doc knowledge base (RAG step).
+3. Uses Gemini (`gemini-2.0-flash`) + RAG context to parse the request into a structured profile: `{genre, mood, energy, likes_acoustic, confidence}`.
+4. Validates and sanitizes Gemini's output before passing it to the recommender.
+5. An agent selects the best scoring mode (energy_focused / mood_first / genre_first / balanced) based on the profile and query.
+6. Scores all 18 catalog songs using the weighted rule-based formula; retries if quality is poor.
+7. Uses Gemini (`gemini-2.0-flash`) to generate a 2-3 sentence natural language explanation of why the top songs match.
 
 The system answers: *"Given what this person said they want, which songs best match, and can I explain why in plain English?"*
 
@@ -65,11 +66,11 @@ A weighted scoring formula assigns points to each song for genre match (+2.0), m
 
 ### v2 AI Layer (new)
 
-**Input path:** Safety guardrail -> Claude NL parser -> Validation guardrail -> Rule-based engine.
+**Input path:** Safety guardrail -> RAG retrieval -> Gemini NL parser (few-shot + context) -> Validation guardrail -> Agent mode selection -> Rule-based engine.
 
-**Output path:** Rule-based engine -> Quality assessor -> Claude narrator.
+**Output path:** Rule-based engine -> Quality assessor -> [retry if poor] -> Gemini narrator.
 
-The AI layer wraps the v1 engine without replacing it. Claude provides natural language understanding; the rule engine provides transparent, auditable scoring.
+The AI layer wraps the v1 engine without replacing it. Gemini provides natural language understanding and narration; the rule engine provides transparent, auditable scoring.
 
 ---
 
@@ -81,7 +82,7 @@ Three reliability mechanisms were added in v2:
 Runs before any API call. Blocks queries matching off-topic regex patterns (e.g., SQL, password requests), queries under 3 characters, and queries over 500 characters. If blocked, no tokens are consumed and a human-readable error is returned.
 
 **2. Validation guardrail (`validate_parsed_profile`)**
-Runs after Claude's JSON response. Checks that genre and mood values are in the known catalog set; discards unknowns with a warning. Clamps energy to [0, 1]. Surfaces confidence score and warns the user if confidence is below 35%. This catches hallucinated catalog values (e.g., Claude returning "soul" as a genre, which is not in the 15-genre catalog).
+Runs after Gemini's JSON response. Checks that genre and mood values are in the known catalog set; discards unknowns with a warning. Clamps energy to [0, 1]. Surfaces confidence score and warns the user if confidence is below 35%. This catches hallucinated catalog values (e.g., Gemini returning "soul" as a genre, which is not in the 15-genre catalog).
 
 **3. Quality assessor (`assess_recommendation_quality`)**
 Rates the recommendation set (excellent/good/fair/poor) based on the ratio of the top score to the theoretical maximum. Tells the user when the catalog lacks good matches for their request.
@@ -100,7 +101,7 @@ Rates the recommendation set (excellent/good/fair/poor) based on the ratio of th
 
 **New in v2:**
 
-4. **Claude may hallucinate genre/mood labels.** In testing, Claude returned "soul", "lofi-hop", and "ambient electronic" which are not in the catalog. The validation guardrail catches all of these and drops the genre/mood filter with a warning.
+4. **Gemini may hallucinate genre/mood labels.** In testing, Gemini returned "soul", "lofi-hop", and "ambient electronic" which are not in the catalog. The validation guardrail catches all of these and drops the genre/mood filter with a warning.
 
 5. **Low-confidence queries produce neutral profiles.** Queries like "good music" parse to energy=0.5, no genre, no mood. The system still returns results, but they are driven almost entirely by popularity proximity, which is weakly informative. The system now warns the user when confidence is below 35%.
 
@@ -110,20 +111,40 @@ Rates the recommendation set (excellent/good/fair/poor) based on the ratio of th
 
 ## 8. Evaluation Results
 
-**Evaluation harness (8 offline test cases):**
+**Pytest unit + integration suite: 184/184 tests pass.**
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `test_recommender_extended.py` | 39 | Scoring formula, all 4 modes, OOP API |
+| `test_guardrails.py` | 42 | Safety blocking, profile validation, quality assessment |
+| `test_rag.py` | 29 | Cosine similarity, KB loading, keyword retrieval |
+| `test_agent.py` | 26 | Mode selection, full offline pipeline runs |
+| `test_ai_agent.py` | 26 | Profile extraction, JSON fence stripping |
+| `test_integration.py` | 20 | Cross-component: pipeline wiring end-to-end |
+| `test_recommender.py` | 2 | Original OOP interface (v1) |
+
+**Evaluation harness (16/16 offline test cases):**
 
 | Test Case | Status | Top Score | Quality |
 |-----------|--------|-----------|---------|
-| Gym workout energy | PASS | 5.55 | good |
-| Chill studying session | PASS | 6.29 | excellent |
-| Sad rainy day | PASS | 4.60 | good |
-| Pop party bangers | PASS | 6.85 | excellent |
-| Off-topic safety check | PASS | -- | blocked |
-| Short nonsense query | PASS | -- | blocked |
-| Jazz coffee shop | PASS | 5.14 | good |
-| Confidence on vague query | PASS | 3.52 | fair |
+| Gym workout energy | PASS | 3.75 | fair |
+| Chill studying -- acoustic | PASS | 4.25 | good |
+| Sad rainy day -- melancholic | PASS | 3.44 | fair |
+| Pop party bangers | PASS | 5.87 | excellent |
+| Off-topic query -- safety block | PASS | -- | blocked |
+| Too-short query -- safety block | PASS | -- | blocked |
+| Jazz coffee shop | PASS | 3.98 | fair |
+| Vague query -- low confidence | PASS | 2.11 | poor |
+| RAG: gym retrieves gym doc | PASS | n/a | retrieval |
+| RAG: study retrieves study doc | PASS | n/a | retrieval |
+| RAG: sad retrieves sad doc | PASS | n/a | retrieval |
+| RAG: party retrieves party doc | PASS | n/a | retrieval |
+| RAG: meditation retrieves doc | PASS | n/a | retrieval |
+| Mode: gym -> energy_focused | PASS | n/a | mode |
+| Mode: sad -> mood_first | PASS | n/a | mode |
+| Mode: jazz + conf -> genre_first | PASS | n/a | mode |
 
-**8/8 cases passed.** Safety blocking, energy parsing, and quality assessment all behaved as expected in offline mode.
+**16/16 cases passed.** Safety blocking, RAG retrieval accuracy, and agent mode selection all behaved correctly in offline mode.
 
 **Scoring modes comparison (from v1):**
 
@@ -139,7 +160,7 @@ For the Chill Lofi profile, enabling diversity increased unique genres in the to
 
 1. **Continuous mood space.** Replace 13 discrete mood labels with (valence, arousal) coordinates. "Angry" and "intense" would be near-neighbors rather than strangers.
 
-2. **Intent classifier as safety layer.** Replace regex patterns with a small classifier that determines whether a query is a genuine music request before passing it to Claude.
+2. **Intent classifier as safety layer.** Replace regex patterns with a small classifier that determines whether a query is a genuine music request before passing it to Gemini.
 
 3. **Feedback loop.** After each session, a thumbs-up/thumbs-down adjusts feature weights by +/-5%, drifting toward a personalized weight profile without collaborative data.
 
@@ -151,20 +172,22 @@ For the Chill Lofi profile, enabling diversity increased unique genres in the to
 
 ## 10. AI Collaboration Reflection
 
-### How Claude was used during development
+### How AI was used during development
 
-Claude was used throughout the v2 development in three roles:
+**Claude Code** (Anthropic's CLI assistant) was used as a development tool throughout v2. **Gemini 2.0 Flash** (`gemini-2.0-flash`) is the production model that runs inside the system at query time. These are two different things.
 
-**Code generation:** I used Claude to generate the initial skeleton for `ai_agent.py` including the system prompt for NL parsing. The starting point was useful but required significant revision. The first prompt did not mark fields as nullable (`null`), which caused parse failures when Claude was uncertain about a field -- it would omit the key entirely, breaking `json.loads`. I revised the prompt to explicitly allow null values and added domain-specific mapping rules (e.g., "gym" -> energy >= 0.8).
+**Code generation:** Claude Code generated the initial skeleton for `ai_agent.py` including the system prompt for NL parsing. The starting point was useful but required significant revision. The first prompt did not mark fields as nullable (`null`), which caused parse failures when Gemini was uncertain about a field -- it would omit the key entirely, breaking `json.loads`. I revised the prompt to explicitly allow null values and added domain-specific mapping rules (e.g., "gym" -> energy >= 0.8).
 
-**One helpful suggestion:** When I described the guardrail architecture, Claude suggested separating the safety check (before API call) from the validation check (after API call) into two distinct functions rather than one combined validator. This was the right call -- it made the code easier to test independently and made the failure modes clearer in the output.
+**One helpful suggestion:** When I described the guardrail architecture, Claude Code suggested separating the safety check (before API call) from the validation check (after API call) into two distinct functions rather than one combined validator. This was the right call -- it made the code easier to test independently and made the failure modes clearer in the output.
 
-**One flawed suggestion:** Claude suggested using a regex for energy value validation: `re.match(r'\d+\.\d+', str(energy))`. This was wrong for two reasons: it would pass strings like "1.5" without catching out-of-range values, and it would fail on integers like `1` (no decimal point). I replaced it with a direct `float()` conversion followed by a range check, which is both simpler and more correct.
+**One flawed suggestion:** A suggested regex for energy value validation -- `re.match(r'\d+\.\d+', str(energy))` -- was wrong for two reasons: it would pass strings like "1.5" without catching out-of-range values, and it would fail on integers like `1` (no decimal point). I replaced it with a direct `float()` conversion followed by a range check, which is both simpler and more correct.
 
-**Documentation:** Claude generated the first draft of the README structure. The sample output sections required manual editing because Claude invented plausible-but-incorrect score values (e.g., claiming a score of "7.12/7.5" which is above the theoretical maximum for the balanced mode).
+**Documentation:** Claude Code generated the first draft of the README structure. The sample output sections required manual editing because the AI invented plausible-but-incorrect score values (e.g., claiming a score of "7.12/7.5" which is above the theoretical maximum for the balanced mode).
 
 ### What surprised me about reliability testing
 
-The most surprising result was that the validation guardrail caught hallucinated genre labels in every manual test I ran. Claude almost always returned a genre when asked -- even if that genre didn't exist in the catalog. This confirmed that the post-Claude validation step is not optional; it is load-bearing. Without it, a query for "soul music" would have passed an unrecognized genre into the recommender, which would silently fail to match any songs and produce a confusing result with no warning.
+The most surprising result was that the validation guardrail caught hallucinated genre labels in every manual test I ran. Gemini almost always returned a genre when asked -- even if that genre didn't exist in the catalog. This confirmed that the post-Gemini validation step is not optional; it is load-bearing. Without it, a query for "soul music" would have passed an unrecognized genre into the recommender, which would silently fail to match any songs and produce a confusing result with no warning.
 
 The second surprise was how well the offline evaluation harness worked as a development tool. By writing test cases before the implementation was complete, I caught two bugs: the safety guardrail was not blocking "hi" (too-short queries) initially because the length check was comparing `len(query)` without stripping whitespace, and the quality assessor was returning `score_ratio = 0.0` on empty recommendation lists instead of gracefully returning a "poor" quality label.
+
+Writing 184 comprehensive pytest tests also surfaced a subtle invariant in the recommender: `recommend_songs` must not mutate the input catalog list. That bug would have been invisible in manual testing but would have caused incorrect results on repeated queries in the interactive REPL.
